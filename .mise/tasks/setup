@@ -10,15 +10,11 @@ echo "Installing Patchright Chromium..."
 echo "  Browser cache: $CACHE_DIR"
 echo ""
 
-npx patchright install chromium
-
-# ESM imports can't use NODE_PATH, so create a node_modules symlink at the
-# repo root pointing to mise's patchright install.
-PATCHRIGHT_MODULES="$(mise where npm:patchright)/lib/node_modules"
-if [ -d "$PATCHRIGHT_MODULES" ]; then
-  ln -sfn "$PATCHRIGHT_MODULES" "$MISE_CONFIG_ROOT/node_modules"
-  echo "  Linked node_modules -> $PATCHRIGHT_MODULES"
-fi
+# Use mise's managed patchright (version pinned in mise.toml), not npx
+# which may resolve a different version from the global npm cache.
+# The runtime scripts import patchright from the same mise-managed install,
+# so the chromium build must match.
+patchright install chromium
 
 echo ""
 echo "Done. Run: browser login <site>"
