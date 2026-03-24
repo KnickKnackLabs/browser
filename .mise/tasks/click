@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#MISE description="Click an element in the browser"
+#USAGE arg "<selector>" help="CSS selector for the element to click"
+#USAGE flag "-b --browser <browser>" help="Browser ID (default: agent's latest browser)"
+
+set -euo pipefail
+source "$MISE_CONFIG_ROOT/lib/identity.sh"
+
+SELECTOR="${usage_selector:?Usage: browser click <selector>}"
+BROWSER_ID="${usage_browser:-}"
+
+ARGS=(--action click --agent "$AGENT" --selector "$SELECTOR")
+[ -n "$BROWSER_ID" ] && ARGS+=(--browser "$BROWSER_ID")
+
+node "$MISE_CONFIG_ROOT/scripts/_cdp.mjs" "${ARGS[@]}"

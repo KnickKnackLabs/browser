@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+#MISE description="Show browser auth status for current agent"
+
+set -euo pipefail
+source "$MISE_CONFIG_ROOT/lib/identity.sh" 2>/dev/null || AGENT=""
+
+echo ""
+echo "Browser Automation"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Check Chromium installation
+CACHE="$(cache_dir)"
+if [ -d "$CACHE" ] && ls "$CACHE"/chromium-* &>/dev/null 2>&1; then
+  echo "  Chromium: installed"
+else
+  echo "  Chromium: not installed (run: browser setup)"
+fi
+echo ""
+
+if [ -z "$AGENT" ]; then
+  echo "  No agent identity detected."
+  echo "  Run: eval \$(shimmer as <agent>)"
+  exit 0
+fi
+
+# Check auth files (new location first, then legacy)
+AUTH_DIR="$(auth_dir)"
+LEGACY_AUTH_DIR="$HOME/.config/shimmer/browser/$AGENT"
+HAS_AUTH=false
+
+for dir in "$AUTH_DIR" "$LEGACY_AUTH_DIR"; do
+  if [ -d "$dir" ] && ls "$dir"/*.json &>/dev/null 2>&1; then
+    if [ "$HAS_AUTH" = "false" ]; then
+      echo "  Auth for $AGENT:"
+      HAS_AUTH=true
+    fi
+    for f in "$dir"/*.json; do
+      SITE=$(basename "$f" .json)
+      AGE_MINS=$(( ($(date +%s) - $(stat -f %m "$f" 2>/dev/null || stat -c %Y "$f" 2>/dev/null)) / 60 ))
+      LOCATION=""
+      if [ "$dir" = "$LEGACY_AUTH_DIR" ]; then
+        LOCATION=" [legacy]"
+      fi
+      if [ "$AGE_MINS" -gt 1440 ]; then
+        echo "    $SITE  (${AGE_MINS}m old, may be expired)${LOCATION}"
+      else
+        echo "    $SITE  (${AGE_MINS}m old)${LOCATION}"
+      fi
+    done
+  fi
+done
+
+if [ "$HAS_AUTH" = "false" ]; then
+  echo "  No auth saved for $AGENT"
+fi
+
+echo ""
+
+# List built-in scripts
+SCRIPTS=$(ls "$MISE_CONFIG_ROOT/scripts/"*.mjs 2>/dev/null | grep -v '^_' || true)
+if [ -n "$SCRIPTS" ]; then
+  echo "  Scripts:"
+  echo "$SCRIPTS" | xargs -n1 basename | sed 's/\.mjs$//' | sed 's/^/    /'
+  echo ""
+fi
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  browser setup              Install Chromium"
+echo "  browser login <site>       Log in interactively"
+echo "  browser run <script> ...   Run automation script"
+echo ""

@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+#MISE description="List running browser instances"
+
+set -euo pipefail
+
+FOUND=false
+
+# New-style PID files
+for pidfile in /tmp/browser-id-*.json; do
+  [ -f "$pidfile" ] || continue
+
+  ID=$(jq -r '.id // "?"' "$pidfile" 2>/dev/null || echo "?")
+  AGENT=$(jq -r '.agent // "?"' "$pidfile" 2>/dev/null || echo "?")
+  PID=$(jq -r '.pid' "$pidfile" 2>/dev/null || echo "?")
+  PORT=$(jq -r '.port' "$pidfile" 2>/dev/null || echo "?")
+
+  if kill -0 "$PID" 2>/dev/null; then
+    FOUND=true
+    echo "$ID  agent=$AGENT  pid=$PID  port=$PORT  running"
+  else
+    rm -f "$pidfile"
+    if [ -n "$AGENT" ] && [ "$AGENT" != "?" ]; then
+      AGENT_PID_FILE="/tmp/browser-${AGENT}.json"
+      if [ -f "$AGENT_PID_FILE" ]; then
+        AGENT_FILE_ID=$(jq -r '.id // empty' "$AGENT_PID_FILE" 2>/dev/null || echo "")
+        if [ "$AGENT_FILE_ID" = "$ID" ]; then
+          rm -f "$AGENT_PID_FILE"
+        fi
+      fi
+    fi
+  fi
+done
+
+# Legacy PID files (shimmer migration)
+for pidfile in /tmp/shimmer-browser-id-*.json; do
+  [ -f "$pidfile" ] || continue
+
+  ID=$(jq -r '.id // "?"' "$pidfile" 2>/dev/null || echo "?")
+  AGENT=$(jq -r '.agent // "?"' "$pidfile" 2>/dev/null || echo "?")
+  PID=$(jq -r '.pid' "$pidfile" 2>/dev/null || echo "?")
+  PORT=$(jq -r '.port' "$pidfile" 2>/dev/null || echo "?")
+
+  if kill -0 "$PID" 2>/dev/null; then
+    FOUND=true
+    echo "$ID  agent=$AGENT  pid=$PID  port=$PORT  running  [legacy]"
+  else
+    rm -f "$pidfile"
+  fi
+done
+
+# Legacy agent-only PID files (no .id field)
+for pidfile in /tmp/shimmer-browser-*.json; do
+  [ -f "$pidfile" ] || continue
+  case "$pidfile" in /tmp/shimmer-browser-id-*) continue ;; esac
+
+  FILE_ID=$(jq -r '.id // empty' "$pidfile" 2>/dev/null || echo "")
+  [ -z "$FILE_ID" ] || continue
+
+  AGENT=$(jq -r '.agent' "$pidfile" 2>/dev/null || basename "$pidfile" | sed 's/shimmer-browser-//;s/\.json//')
+  PID=$(jq -r '.pid' "$pidfile" 2>/dev/null || echo "?")
+  PORT=$(jq -r '.port' "$pidfile" 2>/dev/null || echo "?")
+
+  if kill -0 "$PID" 2>/dev/null; then
+    FOUND=true
+    echo "(legacy)  agent=$AGENT  pid=$PID  port=$PORT  running"
+  else
+    rm -f "$pidfile"
+  fi
+done
+
+if [ "$FOUND" = "false" ]; then
+  echo "No browser instances running."
+fi

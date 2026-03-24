@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#MISE description="Load saved auth state into the browser"
+#USAGE arg "<site>" help="Site to load auth for (e.g. github.com)"
+#USAGE flag "-b --browser <browser>" help="Browser ID (default: agent's latest browser)"
+
+set -euo pipefail
+source "$MISE_CONFIG_ROOT/lib/identity.sh"
+
+SITE="${usage_site:?Usage: browser load-auth <site>}"
+BROWSER_ID="${usage_browser:-}"
+
+ARGS=(--action load-auth --agent "$AGENT" --site "$SITE")
+[ -n "$BROWSER_ID" ] && ARGS+=(--browser "$BROWSER_ID")
+
+node "$MISE_CONFIG_ROOT/scripts/_cdp.mjs" "${ARGS[@]}"

@@ -1,0 +1,10 @@
+[tools]
+node = "22"
+"npm:patchright" = "1.57"
+jq = "1.8.1"
+"1password-cli" = "2.32.0"
+bats = "1.13.0"
+usage = "1"
+
+[settings]
+task_output = "interleave"

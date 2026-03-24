@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+#MISE description="Run a Playwright script with saved browser auth"
+#USAGE arg "<script>" help="Script name (built-in) or path to .mjs file"
+#USAGE arg "[args...]" var=#true help="Arguments to pass to the script"
+#USAGE flag "-s --site <site>" help="Site to use auth for (default: inferred from script)"
+#USAGE flag "-b --browser <browser>" help="Browser ID to run against (persistent browser)"
+#USAGE flag "--headed" help="Run with visible browser"
+
+set -euo pipefail
+source "$MISE_CONFIG_ROOT/lib/identity.sh"
+
+SCRIPT_NAME="${usage_script:?Usage: browser run <script> [args...]}"
+HEADED="${usage_headed:-false}"
+BROWSER_ID="${usage_browser:-}"
+
+# Safe variadic arg parsing (no eval — see or#146)
+SCRIPT_ARGS=()
+if [ -n "${usage_args:-}" ]; then
+  while IFS= read -r arg; do
+    SCRIPT_ARGS+=("$arg")
+  done < <(printf '%s' "${usage_args}" | xargs printf '%s\n')
+fi
+
+# Resolve script: absolute path or built-in name
+if [ -f "$SCRIPT_NAME" ]; then
+  SCRIPT_PATH="$(cd "$(dirname "$SCRIPT_NAME")" && pwd)/$(basename "$SCRIPT_NAME")"
+elif [ -f "$MISE_CONFIG_ROOT/scripts/${SCRIPT_NAME}.mjs" ]; then
+  SCRIPT_PATH="$MISE_CONFIG_ROOT/scripts/${SCRIPT_NAME}.mjs"
+else
+  echo "Script not found: $SCRIPT_NAME" >&2
+  echo "" >&2
+  echo "Built-in scripts:" >&2
+  ls "$MISE_CONFIG_ROOT/scripts/"*.mjs 2>/dev/null | grep -v '^_' | xargs -n1 basename | sed 's/\.mjs$//' | sed 's/^/  /' >&2
+  exit 1
+fi
+
+# Determine site from flag or script metadata
+SITE="${usage_site:-}"
+if [ -z "$SITE" ]; then
+  SITE=$(node -e "import('file://$SCRIPT_PATH').then(m => console.log(m.site || ''))" 2>/dev/null || true)
+fi
+
+# Auth is optional
+AUTH_FILE=""
+if [ -n "$SITE" ]; then
+  AUTH_FILE="$(auth_file "$SITE")"
+  if [ ! -f "$AUTH_FILE" ]; then
+    AUTH_FILE=""
+  fi
+fi
+
+CACHE="$(cache_dir)"
+if [ -z "$BROWSER_ID" ] && { [ ! -d "$CACHE" ] || ! ls "$CACHE"/chromium-* &>/dev/null; }; then
+  echo "Chromium not installed. Run: browser setup" >&2
+  exit 1
+fi
+
+echo "Running: $(basename "$SCRIPT_PATH" .mjs)"
+echo "  Agent: $AGENT"
+[ -n "$SITE" ] && echo "  Site:  $SITE"
+if [ -n "$AUTH_FILE" ]; then
+  echo "  Auth:  $AUTH_FILE"
+else
+  echo "  Auth:  none"
+fi
+[ -n "$BROWSER_ID" ] && echo "  Browser: $BROWSER_ID"
+echo ""
+
+HARNESS_ARGS=(
+  --mode run
+  --script "$SCRIPT_PATH"
+  --headed "$HEADED"
+)
+[ -n "$SITE" ] && HARNESS_ARGS+=(--site "$SITE")
+[ -n "$AUTH_FILE" ] && HARNESS_ARGS+=(--auth-file "$AUTH_FILE")
+[ -n "$BROWSER_ID" ] && HARNESS_ARGS+=(--browser "$BROWSER_ID")
+
+node "$MISE_CONFIG_ROOT/scripts/_harness.mjs" \
+  "${HARNESS_ARGS[@]}" \
+  -- "${SCRIPT_ARGS[@]+"${SCRIPT_ARGS[@]}"}"
