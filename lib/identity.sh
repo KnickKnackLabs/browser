@@ -15,14 +15,23 @@
 
 # Detect agent identity from GIT_AUTHOR_EMAIL or git config
 resolve_agent() {
+  local name=""
   if [ -n "${GIT_AUTHOR_EMAIL:-}" ]; then
-    echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//'
+    name=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
   elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
-    git config user.email | sed 's/@ricon\.family$//'
+    name=$(git config user.email | sed 's/@ricon\.family$//')
   else
     echo "No agent identity detected. Run: eval \$(shimmer as <agent>)" >&2
     return 1
   fi
+
+  # Validate: agent name must be alphanumeric/hyphens only (no path traversal)
+  if [[ ! "$name" =~ ^[a-zA-Z0-9-]+$ ]]; then
+    echo "Invalid agent name: $name" >&2
+    return 1
+  fi
+
+  echo "$name"
 }
 
 # Set AGENT global (call once at task start)

@@ -46,7 +46,7 @@ async function runLogin() {
   const hasLoginScript = existsSync(loginScriptPath);
 
   const canAutomate = automated && hasLoginScript;
-  const browser = await chromium.launch({ headless: canAutomate ? true : false });
+  const browser = await chromium.launch({ headless: canAutomate });
   const context = await browser.newContext();
   const page = await context.newPage();
 

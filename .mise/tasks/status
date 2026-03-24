@@ -58,10 +58,10 @@ fi
 echo ""
 
 # List built-in scripts
-SCRIPTS=$(ls "$MISE_CONFIG_ROOT/scripts/"*.mjs 2>/dev/null | grep -v '^_' || true)
+SCRIPTS=$(ls "$MISE_CONFIG_ROOT/scripts/"*.mjs 2>/dev/null | xargs -n1 basename | grep -v '^_' || true)
 if [ -n "$SCRIPTS" ]; then
   echo "  Scripts:"
-  echo "$SCRIPTS" | xargs -n1 basename | sed 's/\.mjs$//' | sed 's/^/    /'
+  echo "$SCRIPTS" | sed 's/\.mjs$//' | sed 's/^/    /'
   echo ""
 fi
 

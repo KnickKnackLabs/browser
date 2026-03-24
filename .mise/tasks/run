@@ -30,7 +30,7 @@ else
   echo "Script not found: $SCRIPT_NAME" >&2
   echo "" >&2
   echo "Built-in scripts:" >&2
-  ls "$MISE_CONFIG_ROOT/scripts/"*.mjs 2>/dev/null | grep -v '^_' | xargs -n1 basename | sed 's/\.mjs$//' | sed 's/^/  /' >&2
+  ls "$MISE_CONFIG_ROOT/scripts/"*.mjs 2>/dev/null | xargs -n1 basename | grep -v '^_' | sed 's/\.mjs$//' | sed 's/^/  /' >&2
   exit 1
 fi
 

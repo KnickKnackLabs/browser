@@ -2,15 +2,9 @@
 
 load helpers
 
-# Helper to assert with message (avoids bats-support dependency)
-assert_or() {
-  local condition="$1" msg="$2"
-  eval "$condition" || { echo "FAIL: $msg" >&2; return 1; }
-}
-
 @test "cache_dir uses XDG_CACHE_HOME when set" {
   export XDG_CACHE_HOME="/tmp/test-xdg-cache"
-  setup_identity
+  setup_identity --isolate-home
   result="$(cache_dir)"
   [ "$result" = "/tmp/test-xdg-cache/browser" ]
   unset XDG_CACHE_HOME
@@ -18,7 +12,7 @@ assert_or() {
 
 @test "cache_dir falls back to HOME/.cache" {
   unset XDG_CACHE_HOME
-  setup_identity
+  setup_identity --isolate-home
   result="$(cache_dir)"
   [[ "$result" == "$HOME/.cache/browser" ]]
 }
@@ -29,14 +23,14 @@ assert_or() {
 
 @test "all tasks are executable" {
   for task in "$REPO_DIR/.mise/tasks/"*; do
-    assert_or "[ -x '$task' ]" "$(basename "$task") is not executable"
+    assert_file_executable "$task"
   done
 }
 
 @test "all tasks use set -euo pipefail" {
   for task in "$REPO_DIR/.mise/tasks/"*; do
-    local name=$(basename "$task")
-    assert_or "grep -q 'set -euo pipefail' '$task'" "$name missing set -euo pipefail"
+    assert_file_contains 'set -euo pipefail' "$task" \
+      "$(basename "$task") missing set -euo pipefail"
   done
 }
 
@@ -46,7 +40,8 @@ assert_or() {
     if [ "$name" = "list" ] || [ "$name" = "setup" ] || [ "$name" = "test" ]; then
       continue
     fi
-    assert_or "grep -q 'source.*identity.sh' '$task'" "$name doesn't source identity.sh"
+    assert_file_contains 'source.*identity.sh' "$task" \
+      "$name doesn't source identity.sh"
   done
 }
 
@@ -65,11 +60,16 @@ assert_or() {
     if [ "$name" = "close-all" ] || [ "$name" = "list" ]; then
       continue
     fi
-    assert_or "! grep -q 'shimmer-browser' '$task'" "$name references legacy shimmer-browser PID path"
+    assert_file_not_contains 'shimmer-browser' "$task" \
+      "$name references legacy shimmer-browser PID path"
   done
 }
 
 @test "scripts reference _paths.mjs not inline path resolution" {
   grep -q "from './_paths.mjs'" "$REPO_DIR/scripts/_cdp.mjs"
   grep -q "from './_paths.mjs'" "$REPO_DIR/scripts/_harness.mjs"
+}
+
+@test "launch task uses jq for JSON construction" {
+  grep -q 'jq -nc' "$REPO_DIR/.mise/tasks/launch"
 }

@@ -4,6 +4,7 @@ load helpers
 
 setup() {
   setup_identity
+  setup_browser_on_path
   cleanup_pid_files
 }
 
@@ -28,25 +29,25 @@ teardown() {
 }
 
 @test "list task handles no running browsers" {
-  run mise -C "$REPO_DIR" run list
+  run browser list
   [ "$status" -eq 0 ]
   [[ "$output" == *"No browser instances running"* ]]
 }
 
 @test "close task handles no running browser for agent" {
-  run mise -C "$REPO_DIR" run close
+  run browser close
   [ "$status" -eq 0 ]
   [[ "$output" == *"No browser running"* ]]
 }
 
 @test "close task handles nonexistent browser ID" {
-  run mise -C "$REPO_DIR" run close "b-nonexistent"
+  run browser close "b-nonexistent"
   [ "$status" -eq 0 ]
   [[ "$output" == *"already closed"* ]]
 }
 
 @test "close-all handles no running browsers" {
-  run mise -C "$REPO_DIR" run close-all
+  run browser close-all
   [ "$status" -eq 0 ]
   [[ "$output" == *"No browsers running"* ]]
 }

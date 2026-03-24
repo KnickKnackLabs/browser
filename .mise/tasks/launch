@@ -70,11 +70,13 @@ if ! kill -0 "$BROWSER_PID" 2>/dev/null; then
 fi
 
 # Write PID files
-USER_DATA_DIR_JSON=""
+PID_ARGS=(--argjson pid "$BROWSER_PID" --argjson port "$PORT" --arg agent "$AGENT" --arg id "$ID")
+PID_FILTER='{pid: $pid, port: $port, agent: $agent, id: $id}'
 if [[ -n "${usage_user_data_dir:-}" ]]; then
-  USER_DATA_DIR_JSON=", \"user_data_dir\": \"$usage_user_data_dir\""
+  PID_ARGS+=(--arg user_data_dir "$usage_user_data_dir")
+  PID_FILTER='{pid: $pid, port: $port, agent: $agent, id: $id, user_data_dir: $user_data_dir}'
 fi
-PID_DATA="{\"pid\": $BROWSER_PID, \"port\": $PORT, \"agent\": \"$AGENT\", \"id\": \"$ID\"${USER_DATA_DIR_JSON}}"
+PID_DATA=$(jq -nc "${PID_ARGS[@]}" "$PID_FILTER")
 
 echo "$PID_DATA" > "$(pid_file_for_id "$ID")"
 echo "$PID_DATA" > "$(pid_file_for_agent)"
