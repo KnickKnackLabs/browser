@@ -1,6 +1,6 @@
 [tools]
 node = "22"
-"npm:patchright" = "1.57"
+"npm:patchright" = "1.58"
 jq = "1.8.1"
 "1password-cli" = "2.32.0"
 bats = "1.13.0"
