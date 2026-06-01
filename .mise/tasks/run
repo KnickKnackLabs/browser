@@ -8,6 +8,7 @@
 
 set -euo pipefail
 source "$MISE_CONFIG_ROOT/lib/identity.sh"
+source "$MISE_CONFIG_ROOT/lib/patchright.sh"
 
 SCRIPT_NAME="${usage_script:?Usage: browser run <script> [args...]}"
 HEADED="${usage_headed:-false}"
@@ -33,6 +34,8 @@ else
   ls "$MISE_CONFIG_ROOT/scripts/"*.mjs 2>/dev/null | xargs -n1 basename | grep -v '^_' | sed 's/\.mjs$//' | sed 's/^/  /' >&2
   exit 1
 fi
+
+ensure_patchright_node_module
 
 # Determine site from flag or script metadata
 SITE="${usage_site:-}"

@@ -5,6 +5,7 @@
 
 set -euo pipefail
 source "$MISE_CONFIG_ROOT/lib/identity.sh"
+source "$MISE_CONFIG_ROOT/lib/patchright.sh"
 
 SITE="${usage_site:?Usage: browser login <site>}"
 
@@ -58,6 +59,8 @@ if [ "$INTERACTIVE" != "true" ] && { [ -z "$LOGIN_USER" ] || [ -z "$LOGIN_PASS" 
     fi
   fi
 fi
+
+ensure_patchright_node_module
 
 if [ -n "$LOGIN_USER" ] && [ -n "$LOGIN_PASS" ]; then
   echo "Logging in to $SITE as $LOGIN_USER..."

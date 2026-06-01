@@ -5,6 +5,7 @@
 
 set -euo pipefail
 source "$MISE_CONFIG_ROOT/lib/identity.sh"
+source "$MISE_CONFIG_ROOT/lib/patchright.sh"
 
 CACHE="$(cache_dir)"
 if [ ! -d "$CACHE" ] || ! ls "$CACHE"/chromium-* &>/dev/null; then
@@ -30,6 +31,7 @@ while lsof -i ":$PORT" >/dev/null 2>&1; do
 done
 
 # Find Chromium binary via Patchright
+ensure_patchright_node_module
 CHROMIUM_PATH=$(cd "$MISE_CONFIG_ROOT/scripts" && node -e "
   import { chromium } from 'patchright';
   console.log(chromium.executablePath());
