@@ -1,6 +1,6 @@
-# browser
+# Contributing to browser
 
-Browser automation toolkit. Launch, control, and script Chromium instances with saved auth state.
+`browser` is a browser automation toolkit. It launches, controls, and scripts Chromium instances with saved auth state.
 
 ## Structure
 
@@ -35,3 +35,7 @@ mise run test
 ```
 
 Tests use BATS. Test helpers are in `test/helpers.bash`.
+
+## Release notes
+
+Use signed tags for releases. Keep runtime package dependencies resolvable from a fresh shiv/mise install, and do not commit generated `node_modules/` directories.
