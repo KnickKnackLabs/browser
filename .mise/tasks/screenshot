@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
 #MISE description="Take a screenshot of the browser"
+#USAGE example "browser screenshot --full-page" header="Capture a rendered page"
 #USAGE flag "--stdout" help="Write PNG to stdout instead of a file"
+#USAGE flag "--full-page" help="Capture the full scrollable page instead of the viewport"
 #USAGE flag "-b --browser <browser>" help="Browser ID (default: agent's latest browser)"
 
 set -euo pipefail
 source "$MISE_CONFIG_ROOT/lib/identity.sh"
 
 STDOUT="${usage_stdout:-false}"
+FULL_PAGE="${usage_full_page:-false}"
 BROWSER_ID="${usage_browser:-}"
 
 ARGS=(--action screenshot --agent "$AGENT")
 [ "$STDOUT" = "true" ] && ARGS+=(--stdout)
+[ "$FULL_PAGE" = "true" ] && ARGS+=(--full-page)
 [ -n "$BROWSER_ID" ] && ARGS+=(--browser "$BROWSER_ID")
 
 node "$MISE_CONFIG_ROOT/scripts/_cdp.mjs" "${ARGS[@]}"
