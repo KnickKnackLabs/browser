@@ -34,10 +34,10 @@ load helpers
   done
 }
 
-@test "tasks source identity.sh (except list, setup, test)" {
+@test "mutating and identity-scoped tasks source identity.sh" {
   for task in "$REPO_DIR/.mise/tasks/"*; do
     local name=$(basename "$task")
-    if [ "$name" = "list" ] || [ "$name" = "setup" ] || [ "$name" = "test" ]; then
+    if [ "$name" = "doctor" ] || [ "$name" = "list" ] || [ "$name" = "setup" ] || [ "$name" = "test" ]; then
       continue
     fi
     assert_file_contains 'source.*identity.sh' "$task" \

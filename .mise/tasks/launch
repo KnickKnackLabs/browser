@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Launch a browser instance for this agent"
+#USAGE example "browser launch" header="Launch a headless browser"
 #USAGE flag "--headed" help="Launch in headed mode (visible browser window)"
 #USAGE flag "--user-data-dir <dir>" help="Custom user data directory"
 
@@ -32,10 +33,12 @@ done
 
 # Find Chromium binary via Patchright
 ensure_patchright_node_module
-CHROMIUM_PATH=$(cd "$MISE_CONFIG_ROOT/scripts" && node -e "
+if ! CHROMIUM_PATH=$(cd "$MISE_CONFIG_ROOT/scripts" && node -e "
   import { chromium } from 'patchright';
   console.log(chromium.executablePath());
-" 2>/dev/null) || true
+" 2>/dev/null); then
+  CHROMIUM_PATH=""
+fi
 
 if [ -z "$CHROMIUM_PATH" ] || [ ! -f "$CHROMIUM_PATH" ]; then
   echo "Could not find Chromium binary. Run: browser setup" >&2
@@ -73,9 +76,11 @@ fi
 
 # Write PID files
 PID_ARGS=(--argjson pid "$BROWSER_PID" --argjson port "$PORT" --arg agent "$AGENT" --arg id "$ID")
+# shellcheck disable=SC2016 # jq program variables are expanded by jq, not Bash.
 PID_FILTER='{pid: $pid, port: $port, agent: $agent, id: $id}'
 if [[ -n "${usage_user_data_dir:-}" ]]; then
   PID_ARGS+=(--arg user_data_dir "$usage_user_data_dir")
+  # shellcheck disable=SC2016 # jq program variables are expanded by jq, not Bash.
   PID_FILTER='{pid: $pid, port: $port, agent: $agent, id: $id, user_data_dir: $user_data_dir}'
 fi
 PID_DATA=$(jq -nc "${PID_ARGS[@]}" "$PID_FILTER")

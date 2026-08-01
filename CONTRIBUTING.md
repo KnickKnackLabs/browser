@@ -6,12 +6,13 @@
 
 ```
 browser/
-├── .mise/tasks/     # Shell tasks (the CLI interface)
+├── .mise/tasks/     # Thin public CLI adapters and observational doctor
+├── libexec/test     # Canonical BATS workflow
 ├── scripts/         # Node.js scripts (harness, CDP bridge, login flows)
 │   └── login/       # Per-site automated login scripts
-├── lib/             # Shared shell libraries
-│   └── identity.sh  # Agent identity detection and path resolution
-└── test/            # BATS tests
+├── lib/             # Shared self-locating shell libraries
+├── test/            # BATS tests
+└── README.tsx       # Programmable source for generated README.md
 ```
 
 ## Key concepts
@@ -32,9 +33,14 @@ browser/
 
 ```bash
 mise run test
+mise run doctor
+codebase lint "$PWD"
+readme build --check
 ```
 
-Tests use BATS. Test helpers are in `test/helpers.bash`.
+Tests use BATS. The public task forwards to `libexec/test`, which runs independent files through Rush while keeping each file serial. Test helpers are in `test/helpers.bash` and derive the repository from `$BATS_TEST_DIRNAME`.
+
+`mise run doctor` is observational. It reports generated README, configured lint, and optional local hook state without repairing the checkout. Edit `README.tsx`, then run `readme build`; do not hand-edit `README.md`.
 
 ## Release notes
 

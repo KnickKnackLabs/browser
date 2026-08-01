@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Fill an input field in the browser"
+#USAGE example "browser fill 'input[name=q]' 'browser automation'" header="Fill an input"
 #USAGE arg "<selector>" help="CSS selector for the input"
 #USAGE arg "<value>" help="Value to fill"
 #USAGE flag "-b --browser <browser>" help="Browser ID (default: agent's latest browser)"

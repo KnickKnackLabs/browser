@@ -1,6 +1,7 @@
 # Shared test helpers for browser BATS test suite
 
-REPO_DIR="${MISE_CONFIG_ROOT:?tests must be run via: mise run test}"
+REPO_DIR="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
+export REPO_DIR
 REAL_HOME="$HOME"
 
 # Source identity.sh with a mock agent identity.
