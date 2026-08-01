@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 #MISE description="Close all browser instances for this agent"
+#USAGE example "browser close-all" header="Close every browser owned by the current agent"
 
 set -euo pipefail
 source "$MISE_CONFIG_ROOT/lib/identity.sh"
 
 CLOSED=0
+FAILED=0
 
 # Check new-style PID files
 for pidfile in /tmp/browser-id-*.json; do
@@ -17,7 +19,11 @@ for pidfile in /tmp/browser-id-*.json; do
   ID=$(jq -r '.id // empty' "$pidfile" 2>/dev/null || echo "")
 
   if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
-    kill "$PID" 2>/dev/null || true
+    if ! kill "$PID" 2>/dev/null; then
+      echo "Failed to close $ID (pid $PID)" >&2
+      FAILED=$((FAILED + 1))
+      continue
+    fi
     echo "Closed $ID (pid $PID)"
     CLOSED=$((CLOSED + 1))
   fi
@@ -36,7 +42,11 @@ for pidfile in /tmp/shimmer-browser-id-*.json; do
   ID=$(jq -r '.id // empty' "$pidfile" 2>/dev/null || echo "")
 
   if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
-    kill "$PID" 2>/dev/null || true
+    if ! kill "$PID" 2>/dev/null; then
+      echo "Failed to close $ID (pid $PID) [legacy]" >&2
+      FAILED=$((FAILED + 1))
+      continue
+    fi
     echo "Closed $ID (pid $PID) [legacy]"
     CLOSED=$((CLOSED + 1))
   fi
@@ -52,4 +62,9 @@ if [ "$CLOSED" -eq 0 ]; then
   echo "No browsers running for $AGENT"
 else
   echo "Closed $CLOSED browser(s)"
+fi
+
+if [ "$FAILED" -gt 0 ]; then
+  echo "Failed to close $FAILED browser(s); PID files were preserved" >&2
+  exit 1
 fi

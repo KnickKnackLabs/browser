@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # identity.sh — Agent identity detection and path resolution for browser tasks
 #
 # Source this file at the top of any browser task:
@@ -17,10 +18,18 @@
 resolve_agent() {
   local name=""
   if [ -n "${GIT_AUTHOR_EMAIL:-}" ]; then
-    name=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
-  elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
-    name=$(git config user.email | sed 's/@ricon\.family$//')
+    name="${GIT_AUTHOR_EMAIL%@ricon.family}"
   else
+    local email=""
+    if email=$(git config user.email 2>/dev/null) && [[ "$email" == *@ricon.family ]]; then
+      name="${email%@ricon.family}"
+    else
+      echo "No agent identity detected. Run: eval \$(shimmer as <agent>)" >&2
+      return 1
+    fi
+  fi
+
+  if [ -z "$name" ]; then
     echo "No agent identity detected. Run: eval \$(shimmer as <agent>)" >&2
     return 1
   fi
@@ -97,4 +106,5 @@ screenshot_dir() {
 }
 
 # Export PLAYWRIGHT_BROWSERS_PATH for Node scripts
-export PLAYWRIGHT_BROWSERS_PATH="$(cache_dir)"
+PLAYWRIGHT_BROWSERS_PATH="$(cache_dir)"
+export PLAYWRIGHT_BROWSERS_PATH

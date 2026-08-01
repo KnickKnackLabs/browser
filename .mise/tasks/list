@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="List running browser instances"
+#USAGE example "browser list" header="List this agent's browsers"
 
 set -euo pipefail
 

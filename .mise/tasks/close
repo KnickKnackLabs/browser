@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Close a browser instance"
+#USAGE example "browser close b-a1f3" header="Close one browser by ID"
 #USAGE arg "[browser_id]" help="Browser ID to close (default: agent's latest browser)"
 
 set -euo pipefail
@@ -19,7 +20,10 @@ if [ -n "$BROWSER_ID" ]; then
   FILE_AGENT=$(jq -r '.agent' "$PID_FILE" 2>/dev/null || echo "")
 
   if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
-    kill "$PID" 2>/dev/null || true
+    if ! kill "$PID" 2>/dev/null; then
+      echo "Failed to close browser $BROWSER_ID (pid $PID)" >&2
+      exit 1
+    fi
     echo "Browser $BROWSER_ID closed (pid $PID)"
   else
     echo "Browser $BROWSER_ID was not running (stale PID file)"
@@ -49,7 +53,10 @@ else
   CLOSED_ID=$(jq -r '.id // empty' "$PID_FILE" 2>/dev/null || echo "")
 
   if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
-    kill "$PID" 2>/dev/null || true
+    if ! kill "$PID" 2>/dev/null; then
+      echo "Failed to close browser for $AGENT (pid $PID)" >&2
+      exit 1
+    fi
     echo "Browser closed for $AGENT (pid $PID)"
   else
     echo "Browser was not running (stale PID file)"

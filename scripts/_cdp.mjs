@@ -22,6 +22,9 @@ const { values, positionals } = parseArgs({
     depth:    { type: 'string', default: '1' },
     value:    { type: 'string' },
     stdout:   { type: 'boolean', default: false },
+    'full-page': { type: 'boolean', default: false },
+    x:        { type: 'string', default: '0' },
+    y:        { type: 'string', default: '0' },
     timeout:  { type: 'string', default: '30000' },
     site:     { type: 'string' },
   },
@@ -114,16 +117,29 @@ const actions = {
 
   async screenshot() {
     const { browser, page } = await connect();
+    const options = { type: 'png', fullPage: values['full-page'] };
     if (values.stdout) {
-      const buf = await page.screenshot({ type: 'png' });
+      const buf = await page.screenshot(options);
       process.stdout.write(buf);
     } else {
       const dir = '/tmp/browser-screenshots';
       mkdirSync(dir, { recursive: true });
       const path = join(dir, `${agent}-${Date.now()}.png`);
-      await page.screenshot({ path, type: 'png' });
+      await page.screenshot({ ...options, path });
       console.log(path);
     }
+    await browser.close();
+  },
+
+  async scroll() {
+    const x = Number(values.x);
+    const y = Number(values.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || (x === 0 && y === 0)) {
+      console.error('Usage: --action scroll [--x <pixels>] [--y <pixels>] (at least one nonzero finite delta)');
+      process.exit(1);
+    }
+    const { browser, page } = await connect();
+    await page.mouse.wheel(x, y);
     await browser.close();
   },
 

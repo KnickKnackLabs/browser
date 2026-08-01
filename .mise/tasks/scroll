@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#MISE description="Scroll the browser viewport by pixel deltas"
+#USAGE example "browser scroll --x 400 --y -200" header="Scroll by signed pixel deltas"
+#USAGE flag "--x <pixels>" help="Horizontal delta in pixels (default: 0)"
+#USAGE flag "--y <pixels>" help="Vertical delta in pixels (default: 0)"
+#USAGE flag "-b --browser <browser>" help="Browser ID (default: agent's latest browser)"
+
+set -euo pipefail
+source "$MISE_CONFIG_ROOT/lib/identity.sh"
+
+X="${usage_x:-0}"
+Y="${usage_y:-0}"
+BROWSER_ID="${usage_browser:-}"
+
+ARGS=(--action scroll --agent "$AGENT" --x "$X" --y "$Y")
+[ -n "$BROWSER_ID" ] && ARGS+=(--browser "$BROWSER_ID")
+
+node "$MISE_CONFIG_ROOT/scripts/_cdp.mjs" "${ARGS[@]}"

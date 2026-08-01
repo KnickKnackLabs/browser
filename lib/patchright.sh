@@ -13,7 +13,9 @@ resolve_patchright_package_dir() {
 }
 
 ensure_patchright_node_module() {
-  local package_root="${BROWSER_PACKAGE_ROOT:-${MISE_CONFIG_ROOT:?MISE_CONFIG_ROOT not set}}"
+  local lib_dir
+  lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local package_root="${BROWSER_PACKAGE_ROOT:-$(cd "$lib_dir/.." && pwd)}"
   local patchright_dir
   patchright_dir="$(resolve_patchright_package_dir)"
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Install Patchright browser (Chromium only)"
+#USAGE example "browser setup" header="Install the managed Chromium browser"
 
 set -euo pipefail
 

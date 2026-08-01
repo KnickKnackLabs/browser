@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 #MISE description="Show browser auth status for current agent"
+#USAGE example "browser status" header="Inspect saved authentication state"
 
 set -euo pipefail
-source "$MISE_CONFIG_ROOT/lib/identity.sh" 2>/dev/null || AGENT=""
+if ! source "$MISE_CONFIG_ROOT/lib/identity.sh" 2>/dev/null; then
+  AGENT=""
+fi
 
 echo ""
 echo "Browser Automation"
@@ -58,10 +61,18 @@ fi
 echo ""
 
 # List built-in scripts
-SCRIPTS=$(ls "$MISE_CONFIG_ROOT/scripts/"*.mjs 2>/dev/null | xargs -n1 basename | grep -v '^_' || true)
+SCRIPTS=""
+for script in "$MISE_CONFIG_ROOT"/scripts/*.mjs; do
+  [ -e "$script" ] || continue
+  name="$(basename "$script" .mjs)"
+  [[ "$name" == _* ]] && continue
+  SCRIPTS+="${SCRIPTS:+$'\n'}$name"
+done
 if [ -n "$SCRIPTS" ]; then
   echo "  Scripts:"
-  echo "$SCRIPTS" | sed 's/\.mjs$//' | sed 's/^/    /'
+  while IFS= read -r script; do
+    printf '    %s\n' "$script"
+  done <<< "$SCRIPTS"
   echo ""
 fi
 
