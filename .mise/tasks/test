@@ -2,7 +2,7 @@
 #MISE description="Run BATS tests"
 #MISE dir="{{config_root}}"
 #USAGE arg "[args]" default="" var=#true help="Test suites or BATS arguments"
-#USAGE example "mise run test" header="Run all tests in parallel across files"
+#USAGE example "mise run test" header="Run tests concurrently across and within files"
 #USAGE example "mise run test actions" header="Run a specific suite by name"
 #USAGE example "mise run test --filter screenshot" header="Filter tests by name"
 #USAGE example "mise run test --jobs 1" header="Run serially for debugging"
@@ -17,7 +17,6 @@ default_parallel_command="${RUSH_COMMAND:-rush}"
 
 resolved_arguments=()
 has_test_target=false
-has_within_file_override=false
 cli_jobs=""
 cli_parallel_command=""
 
@@ -81,10 +80,6 @@ resolve_arguments() {
     fi
 
     case "$argument" in
-      --no-parallelize-within-files)
-        has_within_file_override=true
-        resolved_arguments+=("$argument")
-        ;;
       -*) resolved_arguments+=("$argument") ;;
       *) append_test_target "$argument" ;;
     esac
@@ -142,10 +137,7 @@ run_bats() {
   local bats_arguments=(--print-output-on-failure)
 
   if [ "$effective_jobs" -gt 1 ]; then
-    if ! $has_within_file_override; then
-      bats_arguments+=(--no-parallelize-within-files)
-    fi
-    printf 'BATS parallelism: %s jobs across files via %s\n' \
+    printf 'BATS parallelism: %s jobs via %s\n' \
       "$effective_jobs" "$effective_parallel_command"
   else
     printf 'BATS parallelism: serial\n'

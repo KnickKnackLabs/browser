@@ -139,7 +139,7 @@ codebase pre-commit`}</CodeBlock>
       <List>
         <Item>Public commands live in <Code>.mise/tasks</Code>.</Item>
         <Item>Browser actions live in <Code>scripts/_cdp.mjs</Code>.</Item>
-        <Item>The public test task runs independent BATS files across Rush workers while keeping each file serial.</Item>
+        <Item>The public test task uses the KKL BATS fork and Rush to run isolated tests concurrently across and within files.</Item>
         <Item>CI checks Ubuntu, macOS, convention lints, and this generated README.</Item>
       </List>
     </Section>
