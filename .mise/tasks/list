@@ -5,9 +5,10 @@
 set -euo pipefail
 
 FOUND=false
+RUNTIME_DIR="${BROWSER_RUNTIME_DIR:-/tmp}"
 
 # New-style PID files
-for pidfile in /tmp/browser-id-*.json; do
+for pidfile in "$RUNTIME_DIR"/browser-id-*.json; do
   [ -f "$pidfile" ] || continue
 
   ID=$(jq -r '.id // "?"' "$pidfile" 2>/dev/null || echo "?")
@@ -21,7 +22,7 @@ for pidfile in /tmp/browser-id-*.json; do
   else
     rm -f "$pidfile"
     if [ -n "$AGENT" ] && [ "$AGENT" != "?" ]; then
-      AGENT_PID_FILE="/tmp/browser-${AGENT}.json"
+      AGENT_PID_FILE="$RUNTIME_DIR/browser-${AGENT}.json"
       if [ -f "$AGENT_PID_FILE" ]; then
         AGENT_FILE_ID=$(jq -r '.id // empty' "$AGENT_PID_FILE" 2>/dev/null || echo "")
         if [ "$AGENT_FILE_ID" = "$ID" ]; then
@@ -33,7 +34,7 @@ for pidfile in /tmp/browser-id-*.json; do
 done
 
 # Legacy PID files (shimmer migration)
-for pidfile in /tmp/shimmer-browser-id-*.json; do
+for pidfile in "$RUNTIME_DIR"/shimmer-browser-id-*.json; do
   [ -f "$pidfile" ] || continue
 
   ID=$(jq -r '.id // "?"' "$pidfile" 2>/dev/null || echo "?")
@@ -50,9 +51,9 @@ for pidfile in /tmp/shimmer-browser-id-*.json; do
 done
 
 # Legacy agent-only PID files (no .id field)
-for pidfile in /tmp/shimmer-browser-*.json; do
+for pidfile in "$RUNTIME_DIR"/shimmer-browser-*.json; do
   [ -f "$pidfile" ] || continue
-  case "$pidfile" in /tmp/shimmer-browser-id-*) continue ;; esac
+  case "$(basename "$pidfile")" in shimmer-browser-id-*) continue ;; esac
 
   FILE_ID=$(jq -r '.id // empty' "$pidfile" 2>/dev/null || echo "")
   [ -z "$FILE_ID" ] || continue

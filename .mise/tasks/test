@@ -8,7 +8,7 @@
 #USAGE example "mise run test --jobs 1" header="Run serially for debugging"
 set -euo pipefail
 
-# Keep each BATS file serial while Rush schedules independent files.
+# KKL BATS and Rush schedule tests concurrently across and within files.
 
 test_directory="$MISE_CONFIG_ROOT/test"
 default_parallel_jobs=4

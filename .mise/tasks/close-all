@@ -7,9 +7,10 @@ source "$MISE_CONFIG_ROOT/lib/identity.sh"
 
 CLOSED=0
 FAILED=0
+RUNTIME_DIR="$(browser_runtime_dir)"
 
 # Check new-style PID files
-for pidfile in /tmp/browser-id-*.json; do
+for pidfile in "$RUNTIME_DIR"/browser-id-*.json; do
   [ -f "$pidfile" ] || continue
 
   FILE_AGENT=$(jq -r '.agent // empty' "$pidfile" 2>/dev/null || echo "")
@@ -32,7 +33,7 @@ for pidfile in /tmp/browser-id-*.json; do
 done
 
 # Also check legacy PID files
-for pidfile in /tmp/shimmer-browser-id-*.json; do
+for pidfile in "$RUNTIME_DIR"/shimmer-browser-id-*.json; do
   [ -f "$pidfile" ] || continue
 
   FILE_AGENT=$(jq -r '.agent // empty' "$pidfile" 2>/dev/null || echo "")
@@ -56,7 +57,7 @@ done
 
 # Clean up agent-default PID files
 rm -f "$(pid_file_for_agent)"
-rm -f "/tmp/shimmer-browser-${AGENT}.json"
+rm -f "$RUNTIME_DIR/shimmer-browser-${AGENT}.json"
 
 if [ "$CLOSED" -eq 0 ]; then
   echo "No browsers running for $AGENT"

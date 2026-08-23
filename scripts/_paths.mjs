@@ -9,20 +9,22 @@ import { join } from 'node:path';
 
 // --- PID files ---
 
+const runtimeDir = process.env.BROWSER_RUNTIME_DIR || '/tmp';
+
 export function pidFileForId(id) {
-  return `/tmp/browser-id-${id}.json`;
+  return join(runtimeDir, `browser-id-${id}.json`);
 }
 
 export function pidFileForAgent(agentName) {
-  return `/tmp/browser-${agentName}.json`;
+  return join(runtimeDir, `browser-${agentName}.json`);
 }
 
 function legacyPidFileForId(id) {
-  return `/tmp/shimmer-browser-id-${id}.json`;
+  return join(runtimeDir, `shimmer-browser-id-${id}.json`);
 }
 
 function legacyPidFileForAgent(agentName) {
-  return `/tmp/shimmer-browser-${agentName}.json`;
+  return join(runtimeDir, `shimmer-browser-${agentName}.json`);
 }
 
 // Resolve PID file — check new path first, fall back to legacy
