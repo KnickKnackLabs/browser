@@ -16,8 +16,8 @@ teardown() {
   local id_file="$(pid_file_for_id "test-001")"
   local agent_file="$(pid_file_for_agent)"
 
-  [[ "$id_file" == "/tmp/browser-id-test-001.json" ]]
-  [[ "$agent_file" == "/tmp/browser-test-agent.json" ]]
+  [[ "$id_file" == "$BROWSER_RUNTIME_DIR/browser-id-test-001.json" ]]
+  [[ "$agent_file" == "$BROWSER_RUNTIME_DIR/browser-test-agent.json" ]]
 }
 
 @test "PID file naming doesn't use shimmer prefix" {
@@ -26,6 +26,37 @@ teardown() {
 
   [[ "$id_file" != *"shimmer"* ]]
   [[ "$agent_file" != *"shimmer"* ]]
+}
+
+@test "shell and Node PID paths use the isolated runtime directory" {
+  run node --input-type=module -e \
+    "import { pidFileForId, pidFileForAgent } from 'file://$REPO_DIR/scripts/_paths.mjs'; console.log(pidFileForId('test-003')); console.log(pidFileForAgent('test-agent'));"
+
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = "$BROWSER_RUNTIME_DIR/browser-id-test-003.json" ]
+  [ "${lines[1]}" = "$BROWSER_RUNTIME_DIR/browser-test-agent.json" ]
+}
+
+@test "list task uses the isolated runtime directory" {
+  local stale_file="$BROWSER_RUNTIME_DIR/browser-id-stale.json"
+  printf '%s\n' '{"pid":999999999,"agent":"test-agent","id":"stale"}' > "$stale_file"
+
+  run browser list
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$stale_file" ]
+  [[ "$output" == *"No browser instances running"* ]]
+}
+
+@test "close-all uses the isolated runtime directory" {
+  local stale_file="$BROWSER_RUNTIME_DIR/browser-id-stale.json"
+  printf '%s\n' '{"pid":999999999,"agent":"test-agent","id":"stale"}' > "$stale_file"
+
+  run browser close-all
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$stale_file" ]
+  [[ "$output" == *"No browsers running"* ]]
 }
 
 @test "list task handles no running browsers" {

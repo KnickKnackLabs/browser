@@ -9,6 +9,7 @@
 #   resolve_agent   — detect agent from git identity
 #   auth_dir        — auth state directory for this agent
 #   auth_file       — auth state file for a given site
+#   browser_runtime_dir — PID-state directory (defaults to /tmp)
 #   pid_file_for_id — PID file path for a browser ID
 #   pid_file_for_agent — PID file path for an agent's default browser
 #   cache_dir       — browser cache directory (Chromium install)
@@ -88,12 +89,16 @@ ensure_auth_dir() {
 }
 
 # PID file paths
+browser_runtime_dir() {
+  printf '%s\n' "${BROWSER_RUNTIME_DIR:-/tmp}"
+}
+
 pid_file_for_id() {
-  echo "/tmp/browser-id-${1}.json"
+  printf '%s/browser-id-%s.json\n' "$(browser_runtime_dir)" "$1"
 }
 
 pid_file_for_agent() {
-  echo "/tmp/browser-${1:-$AGENT}.json"
+  printf '%s/browser-%s.json\n' "$(browser_runtime_dir)" "${1:-$AGENT}"
 }
 
 # Cache and output directories

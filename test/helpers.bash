@@ -25,16 +25,18 @@ setup_tmp() {
   mkdir -p "$TEST_TMP"
 }
 
-# Clean up test PID files from /tmp
+# Clean up test PID files from the active runtime directory.
 cleanup_pid_files() {
-  rm -f /tmp/browser-id-test-*.json /tmp/browser-test-*.json
+  local runtime_dir="${BROWSER_RUNTIME_DIR:-/tmp}"
+  rm -f "$runtime_dir"/browser-id-test-*.json "$runtime_dir"/browser-test-*.json
 }
 
 # Put a mock `browser` on PATH that delegates to mise.
 # Follows the shiv shim pattern so tests use `browser <task>` not `mise run`.
 setup_browser_on_path() {
   local mock_bin="$BATS_TEST_TMPDIR/mock-bin"
-  mkdir -p "$mock_bin"
+  export BROWSER_RUNTIME_DIR="$BATS_TEST_TMPDIR/browser runtime"
+  mkdir -p "$mock_bin" "$BROWSER_RUNTIME_DIR"
   cat > "$mock_bin/browser" <<MOCK
 #!/usr/bin/env bash
 export BROWSER_CALLER_PWD="\$PWD"
