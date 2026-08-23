@@ -17,4 +17,4 @@ ARGS=(--action screenshot --agent "$AGENT")
 [ "$FULL_PAGE" = "true" ] && ARGS+=(--full-page)
 [ -n "$BROWSER_ID" ] && ARGS+=(--browser "$BROWSER_ID")
 
-node "$MISE_CONFIG_ROOT/scripts/_cdp.mjs" "${ARGS[@]}"
+node "$MISE_CONFIG_ROOT/scripts/_cdp.mjs" ${ARGS[@]+"${ARGS[@]}"}

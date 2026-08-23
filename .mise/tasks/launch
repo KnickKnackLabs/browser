@@ -62,7 +62,7 @@ fi
   --no-default-browser-check \
   --allow-chrome-scheme-url \
   ${HEADLESS_FLAG:+"$HEADLESS_FLAG"} \
-  "${USER_DATA_ARGS[@]}" \
+  ${USER_DATA_ARGS[@]+"${USER_DATA_ARGS[@]}"} \
   &>/dev/null &
 
 BROWSER_PID=$!
@@ -83,7 +83,7 @@ if [[ -n "${usage_user_data_dir:-}" ]]; then
   # shellcheck disable=SC2016 # jq program variables are expanded by jq, not Bash.
   PID_FILTER='{pid: $pid, port: $port, agent: $agent, id: $id, user_data_dir: $user_data_dir}'
 fi
-PID_DATA=$(jq -nc "${PID_ARGS[@]}" "$PID_FILTER")
+PID_DATA=$(jq -nc ${PID_ARGS[@]+"${PID_ARGS[@]}"} "$PID_FILTER")
 
 echo "$PID_DATA" > "$(pid_file_for_id "$ID")"
 echo "$PID_DATA" > "$(pid_file_for_agent)"

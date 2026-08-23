@@ -139,14 +139,14 @@ codebase pre-commit`}</CodeBlock>
       <List>
         <Item>Public commands live in <Code>.mise/tasks</Code>.</Item>
         <Item>Browser actions live in <Code>scripts/_cdp.mjs</Code>.</Item>
-        <Item>Independent BATS files run through the canonical <Code>libexec/test</Code> workflow.</Item>
+        <Item>The public test task runs independent BATS files across Rush workers while keeping each file serial.</Item>
         <Item>CI checks Ubuntu, macOS, convention lints, and this generated README.</Item>
       </List>
     </Section>
 
     <Details summary="Current repository health">
       <Paragraph>
-        {`This checkout exposes ${tasks} public tasks, ${tests} BATS tests, and ${lints.length} configured convention lints.`}
+        {`This checkout exposes ${tasks} public tasks and ${tests} BATS tests, with this configured convention lint portfolio.`}
       </Paragraph>
       <CodeBlock>{lints.join("\n")}</CodeBlock>
     </Details>

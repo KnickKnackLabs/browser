@@ -37,7 +37,7 @@ setup_browser_on_path() {
   mkdir -p "$mock_bin"
   cat > "$mock_bin/browser" <<MOCK
 #!/usr/bin/env bash
-export CALLER_PWD="\$PWD"
+export BROWSER_CALLER_PWD="\$PWD"
 export MISE_TRUSTED_CONFIG_PATHS="$REPO_DIR:$REAL_HOME/.config/mise"
 exec mise -C "$REPO_DIR" run -q "\$@"
 MOCK

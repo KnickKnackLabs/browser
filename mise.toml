@@ -15,16 +15,9 @@ jq = "1.8.1"
 bats = "1.13.0"
 gum = "0.17.0"
 usage = "1"
-"shiv:codebase" = "0.3"
+"shiv:codebase" = "0.4"
 "shiv:readme" = "0.3"
 
 [_.codebase]
-lint = [
-  "mise-settings",
-  "bats-test-helper",
-  "mcr-scope",
-  "or-true",
-  "shellcheck",
-  "gum-table",
-  "github-actions",
-]
+name = "browser"
+lint = ["@all"]

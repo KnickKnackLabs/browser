@@ -76,22 +76,16 @@ codebase pre-commit
 
 - Public commands live in `.mise/tasks`.
 - Browser actions live in `scripts/_cdp.mjs`.
-- Independent BATS files run through the canonical `libexec/test` workflow.
+- The public test task runs independent BATS files across Rush workers while keeping each file serial.
 - CI checks Ubuntu, macOS, convention lints, and this generated README.
 
 <details>
 <summary><b>Current repository health</b></summary>
 
-This checkout exposes 19 public tasks, 48 BATS tests, and 7 configured convention lints.
+This checkout exposes 19 public tasks and 48 BATS tests, with this configured convention lint portfolio.
 
 ```
-mise-settings
-bats-test-helper
-mcr-scope
-or-true
-shellcheck
-gum-table
-github-actions
+@all
 ```
 
 </details>
