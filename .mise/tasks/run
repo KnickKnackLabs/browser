@@ -87,5 +87,5 @@ HARNESS_ARGS=(
 [ -n "$BROWSER_ID" ] && HARNESS_ARGS+=(--browser "$BROWSER_ID")
 
 node "$MISE_CONFIG_ROOT/scripts/_harness.mjs" \
-  "${HARNESS_ARGS[@]}" \
+  ${HARNESS_ARGS[@]+"${HARNESS_ARGS[@]}"} \
   -- "${SCRIPT_ARGS[@]+"${SCRIPT_ARGS[@]}"}"

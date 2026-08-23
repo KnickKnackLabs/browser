@@ -12,8 +12,7 @@ setup() {
     README.tsx \
     README.md \
     .mise/tasks/doctor \
-    .github/workflows/test.yml \
-    libexec/test
+    .github/workflows/test.yml
   do
     [ -e "$REPO_DIR/$path" ]
   done

@@ -45,13 +45,13 @@ arg_count() {
   awk -F= -v expected="$expected" '$1 == "arg" && substr($0, 5) == expected { count++ } END { print count + 0 }' "$BATS_LOG"
 }
 
-@test "test task defaults to four Rush jobs across files" {
+@test "test task defaults to four Rush jobs without disabling within-file concurrency" {
   run browser test actions --filter screenshot
   [ "$status" -eq 0 ]
-  [[ "$output" == *"4 jobs across files"* ]]
+  [[ "$output" == *"4 jobs via"* ]]
   [ "$(log_value jobs)" = "4" ]
   [ "$(log_value runner)" = "$MOCK_DIR/rush" ]
-  [ "$(arg_count --no-parallelize-within-files)" -eq 1 ]
+  [ "$(arg_count --no-parallelize-within-files)" -eq 0 ]
   [ "$(arg_count "$REPO_DIR/test/actions.bats")" -eq 1 ]
 }
 
@@ -80,4 +80,45 @@ arg_count() {
   [ "$status" -eq 2 ]
   [[ "$output" == *"must be a positive integer"* ]]
   [ ! -e "$BATS_LOG" ]
+}
+
+@test "test task runs tests within one BATS file concurrently" {
+  probe_dir="$BATS_TEST_TMPDIR/within-file-probe"
+  barrier_dir="$BATS_TEST_TMPDIR/within-file-barrier"
+  mkdir -p "$probe_dir" "$barrier_dir"
+
+  test_keyword='@test'
+  {
+    printf '%s\n' '#!/usr/bin/env bats'
+    printf '%s\n' "$test_keyword \"first test observes second test\" {"
+    cat <<'BATS'
+  touch "$PROBE_DIR/one"
+  for _ in {1..50}; do
+    [ ! -e "$PROBE_DIR/two" ] || return 0
+    sleep 0.05
+  done
+  false
+}
+BATS
+    printf '%s\n' "$test_keyword \"second test observes first test\" {"
+    cat <<'BATS'
+  touch "$PROBE_DIR/two"
+  for _ in {1..50}; do
+    [ ! -e "$PROBE_DIR/one" ] || return 0
+    sleep 0.05
+  done
+  false
+}
+BATS
+  } > "$probe_dir/within-file.bats"
+
+  run env -i \
+    HOME="$HOME" \
+    PATH="$PATH" \
+    TMPDIR="${TMPDIR:-/tmp}" \
+    PROBE_DIR="$barrier_dir" \
+    browser test "$probe_dir"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"jobs via"* ]]
 }

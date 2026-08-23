@@ -5,7 +5,7 @@
 **Agent-scoped Chromium automation with saved authentication.**
 
 ![tasks: 19](https://img.shields.io/badge/tasks-19-blue?style=flat)
-[![tests: 48](https://img.shields.io/badge/tests-48-brightgreen?style=flat)](test/)
+[![tests: 52](https://img.shields.io/badge/tests-52-brightgreen?style=flat)](test/)
 ![CI: ubuntu-latest + macos-latest](https://img.shields.io/badge/CI-ubuntu--latest%20%2B%20macos--latest-4EAA25?style=flat)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat)](LICENSE)
 
@@ -76,22 +76,16 @@ codebase pre-commit
 
 - Public commands live in `.mise/tasks`.
 - Browser actions live in `scripts/_cdp.mjs`.
-- Independent BATS files run through the canonical `libexec/test` workflow.
+- The public test task uses the KKL BATS fork and Rush to run isolated tests concurrently across and within files.
 - CI checks Ubuntu, macOS, convention lints, and this generated README.
 
 <details>
 <summary><b>Current repository health</b></summary>
 
-This checkout exposes 19 public tasks, 48 BATS tests, and 7 configured convention lints.
+This checkout exposes 19 public tasks and 52 BATS tests, with this configured convention lint portfolio.
 
 ```
-mise-settings
-bats-test-helper
-mcr-scope
-or-true
-shellcheck
-gum-table
-github-actions
+@all
 ```
 
 </details>

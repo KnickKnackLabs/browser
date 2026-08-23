@@ -13,4 +13,4 @@ BROWSER_ID="${usage_browser:-}"
 ARGS=(--action click --agent "$AGENT" --selector "$SELECTOR")
 [ -n "$BROWSER_ID" ] && ARGS+=(--browser "$BROWSER_ID")
 
-node "$MISE_CONFIG_ROOT/scripts/_cdp.mjs" "${ARGS[@]}"
+node "$MISE_CONFIG_ROOT/scripts/_cdp.mjs" ${ARGS[@]+"${ARGS[@]}"}
