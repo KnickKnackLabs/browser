@@ -6,99 +6,100 @@ bats_require_minimum_version 1.5.0
 setup() {
   setup_identity
   setup_browser_on_path
-
-  MOCK_DIR="$BATS_TEST_TMPDIR/test-runner-bin"
-  BATS_LOG="$BATS_TEST_TMPDIR/bats.log"
-  mkdir -p "$MOCK_DIR"
-  export BATS_LOG
-
-  cat > "$MOCK_DIR/bats" <<'SH'
-#!/usr/bin/env bash
-set -euo pipefail
-{
-  printf 'jobs=%s\n' "${BATS_NUMBER_OF_PARALLEL_JOBS:-}"
-  printf 'runner=%s\n' "${BATS_PARALLEL_BINARY_NAME:-}"
-  for argument in "$@"; do
-    printf 'arg=%s\n' "$argument"
-  done
-} > "$BATS_LOG"
-SH
-
-  cat > "$MOCK_DIR/rush" <<'SH'
-#!/usr/bin/env bash
-exit 0
-SH
-
-  chmod +x "$MOCK_DIR/bats" "$MOCK_DIR/rush"
-  export BATS_COMMAND="$MOCK_DIR/bats"
-  export RUSH_COMMAND="$MOCK_DIR/rush"
-  unset BATS_NUMBER_OF_PARALLEL_JOBS BATS_PARALLEL_BINARY_NAME
 }
 
-log_value() {
-  local key="$1"
-  awk -F= -v key="$key" '$1 == key { print substr($0, length(key) + 2); exit }' "$BATS_LOG"
+write_passing_test() {
+  local path="$1" name="$2"
+  mkdir -p "$(dirname "$path")"
+  printf '%s\n' \
+    '#!/usr/bin/env bats' \
+    "@test \"$name\" {" \
+    '  true' \
+    '}' > "$path"
 }
 
-arg_count() {
-  local expected="$1"
-  awk -F= -v expected="$expected" '$1 == "arg" && substr($0, 5) == expected { count++ } END { print count + 0 }' "$BATS_LOG"
-}
+@test "options-only calls use the configured default test directory" {
+  run browser test --jobs 1 --filter '^current repository health surfaces exist$'
 
-@test "test task defaults to four Rush jobs without disabling within-file concurrency" {
-  run browser test actions --filter screenshot
   [ "$status" -eq 0 ]
-  [[ "$output" == *"4 jobs via"* ]]
-  [ "$(log_value jobs)" = "4" ]
-  [ "$(log_value runner)" = "$MOCK_DIR/rush" ]
-  [ "$(arg_count --no-parallelize-within-files)" -eq 0 ]
-  [ "$(arg_count "$REPO_DIR/test/actions.bats")" -eq 1 ]
+  [[ "$output" == *'1..1'* ]]
+  [[ "$output" == *'ok 1 current repository health surfaces exist'* ]]
 }
 
-@test "option values cannot suppress the whitespace transport fallback" {
-  target="$BATS_TEST_TMPDIR/parallel target/fixture file.bats"
-  mkdir -p "$(dirname "$target")"
-  printf '%s
-' '#!/usr/bin/env bats' > "$target"
+@test "an explicit test target takes precedence over the configured default" {
+  local target="$BATS_TEST_TMPDIR/explicit.bats"
+  write_passing_test "$target" 'explicit target only'
 
-  run browser test "$target" --filter --no-parallelize-across-files
+  run browser test --jobs 1 "$target"
+
   [ "$status" -eq 0 ]
-  [ "$(arg_count --no-parallelize-across-files)" -eq 2 ]
-  [ "$(arg_count --no-parallelize-within-files)" -eq 0 ]
-  [ "$(arg_count "$target")" -eq 1 ]
+  [[ "$output" == *'1..1'* ]]
+  [[ "$output" == *'ok 1 explicit target only'* ]]
 }
 
-@test "explicit serial execution does not require Rush" {
-  export RUSH_COMMAND="$MOCK_DIR/missing-rush"
+@test "relative test targets resolve from the repository root" {
+  run browser test --jobs 1 test/health.bats --filter '^current repository health surfaces exist$'
 
-  run browser test --jobs 1 actions
   [ "$status" -eq 0 ]
-  [[ "$output" == *"BATS parallelism: serial"* ]]
-  [ "$(arg_count --no-parallelize-within-files)" -eq 0 ]
+  [[ "$output" == *'1..1'* ]]
+  [[ "$output" == *'ok 1 current repository health surfaces exist'* ]]
 }
 
-@test "parallel execution fails clearly without the selected runner" {
-  export RUSH_COMMAND="$MOCK_DIR/missing-rush"
+@test "whitespace-bearing explicit test targets remain one argument" {
+  local target="$BATS_TEST_TMPDIR/explicit target/passing test.bats"
+  write_passing_test "$target" 'whitespace target'
 
-  run -127 browser test actions
-  [ "$status" -eq 127 ]
-  [[ "$output" == *"parallel runner '$MOCK_DIR/missing-rush' is unavailable for 4 jobs"* ]]
-  [ ! -e "$BATS_LOG" ]
+  run browser test --jobs 2 "$target"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'1..1'* ]]
+  [[ "$output" == *'ok 1 whitespace target'* ]]
 }
 
-@test "invalid job count fails before BATS" {
-  export BATS_NUMBER_OF_PARALLEL_JOBS=lots
-
-  run -2 browser test actions
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"must be a positive integer"* ]]
-  [ ! -e "$BATS_LOG" ]
-}
-
-@test "test task runs tests within one BATS file concurrently" {
-  probe_dir="$BATS_TEST_TMPDIR/within-file-probe"
-  barrier_dir="$BATS_TEST_TMPDIR/within-file-barrier"
+@test "public Browser test path runs separate BATS files concurrently" {
+  local probe_dir="$BATS_TEST_TMPDIR/across-file-probe"
+  local barrier_dir="$BATS_TEST_TMPDIR/across-file-barrier"
   mkdir -p "$probe_dir" "$barrier_dir"
+
+  test_keyword='@test'
+  {
+    printf '%s\n' '#!/usr/bin/env bats'
+    printf '%s\n' "$test_keyword \"first worker observes second worker\" {"
+    cat <<'BATS'
+  touch "$PROBE_DIR/one"
+  for _ in {1..50}; do
+    [ ! -e "$PROBE_DIR/two" ] || return 0
+    sleep 0.05
+  done
+  false
+}
+BATS
+  } > "$probe_dir/one.bats"
+
+  {
+    printf '%s\n' '#!/usr/bin/env bats'
+    printf '%s\n' "$test_keyword \"second worker observes first worker\" {"
+    cat <<'BATS'
+  touch "$PROBE_DIR/two"
+  for _ in {1..50}; do
+    [ ! -e "$PROBE_DIR/one" ] || return 0
+    sleep 0.05
+  done
+  false
+}
+BATS
+  } > "$probe_dir/two.bats"
+
+  export PROBE_DIR="$barrier_dir"
+  run browser test "$probe_dir"
+
+  [ "$status" -eq 0 ]
+}
+
+@test "public Browser test path runs tests within one BATS file concurrently" {
+  local probe_dir="$BATS_TEST_TMPDIR/within-file-probe"
+  export PROBE_DIR="$BATS_TEST_TMPDIR/within-file-barrier"
+  mkdir -p "$probe_dir" "$PROBE_DIR"
 
   test_keyword='@test'
   {
@@ -125,13 +126,7 @@ BATS
 BATS
   } > "$probe_dir/within-file.bats"
 
-  run env -i \
-    HOME="$HOME" \
-    PATH="$PATH" \
-    TMPDIR="${TMPDIR:-/tmp}" \
-    PROBE_DIR="$barrier_dir" \
-    browser test "$probe_dir"
+  run browser test "$probe_dir"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"jobs via"* ]]
 }
