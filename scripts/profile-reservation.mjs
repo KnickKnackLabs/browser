@@ -1,4 +1,4 @@
-// Exclusive ownership shared by browser workers and closed-profile forks.
+// Exclusive ownership shared by browser workers and closed-profile clones.
 import { open, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { profileDirectory } from './profile-store.mjs';

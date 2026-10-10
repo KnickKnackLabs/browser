@@ -4,7 +4,7 @@ import { mkdir, writeFile, readFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createProfile, profileDirectory, profileDataDirectory } from '../../scripts/profile-store.mjs';
 import { reserveProfile } from '../../scripts/profile-reservation.mjs';
-import { forkProfile } from '../../scripts/fork-profile.mjs';
+import { cloneProfile } from '../../scripts/clone-profile.mjs';
 
 await createProfile('baseline');
 await writeFile(join(await profileDataDirectory('baseline'), 'state'), 'original');
@@ -32,7 +32,7 @@ for (const mode of ['failure', 'cancellation']) {
   }
 
   const expectedError = mode === 'failure' ? /Injected copy failure/ : { name: 'AbortError' };
-  await assert.rejects(forkProfile('baseline', destination, {
+  await assert.rejects(cloneProfile('baseline', destination, {
     copyDirectory,
     signal: controller.signal,
   }), expectedError);
@@ -42,6 +42,6 @@ for (const mode of ['failure', 'cancellation']) {
   assert.equal(await readFile(join(await profileDataDirectory('baseline'), 'state'), 'utf8'), 'original');
 
   // A subsequent real copy proves the source lease and destination name are reusable.
-  await forkProfile('baseline', destination);
+  await cloneProfile('baseline', destination);
   assert.equal(await readFile(join(await profileDataDirectory(destination), 'state'), 'utf8'), 'original');
 }

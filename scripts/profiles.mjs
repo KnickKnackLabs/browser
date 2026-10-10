@@ -1,13 +1,13 @@
 import { createProfile, listProfiles } from './profile-store.mjs';
-import { forkProfile } from './fork-profile.mjs';
+import { cloneProfile } from './clone-profile.mjs';
 
-async function forkWithCancellation(source, destination) {
+async function cloneWithCancellation(source, destination) {
   const controller = new AbortController();
   const interrupt = () => controller.abort();
   process.once('SIGINT', interrupt);
   process.once('SIGTERM', interrupt);
   try {
-    await forkProfile(source, destination, { signal: controller.signal });
+    await cloneProfile(source, destination, { signal: controller.signal });
   } finally {
     process.removeListener('SIGINT', interrupt);
     process.removeListener('SIGTERM', interrupt);
@@ -21,11 +21,11 @@ try {
     console.log(args[0]);
   } else if (operation === 'list' && args.length === 0) {
     for (const name of await listProfiles()) console.log(name);
-  } else if (operation === 'fork' && args.length === 2) {
-    await forkWithCancellation(args[0], args[1]);
+  } else if (operation === 'clone' && args.length === 2) {
+    await cloneWithCancellation(args[0], args[1]);
     console.log(args[1]);
   } else {
-    throw new Error('Usage: profiles.mjs create NAME | list | fork SOURCE DESTINATION');
+    throw new Error('Usage: profiles.mjs create NAME | list | clone SOURCE DESTINATION');
   }
 } catch (error) {
   console.error(`Error: ${error.message}`);

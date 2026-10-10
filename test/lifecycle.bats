@@ -90,18 +90,18 @@ teardown() {
   [ -d "$BROWSER_PROFILES_DIR/reserved/data" ]
 }
 
-@test "closed profile forks share initial cookies but evolve independently" {
+@test "closed profile clones share initial cookies but evolve independently" {
   browser profile:create baseline
   source_id="$(browser launch --profile baseline)"
   browser run --browser "$source_id" "$PROBE" set
 
-  run browser profile:fork baseline research-a
+  run browser profile:clone baseline research-a
   [ "$status" -ne 0 ]
   [ ! -e "$BROWSER_PROFILES_DIR/research-a" ]
   browser close "$source_id"
 
-  browser profile:fork baseline research-a
-  browser profile:fork baseline research-b
+  browser profile:clone baseline research-a
+  browser profile:clone baseline research-b
   first_id="$(browser launch --profile research-a)"
   second_id="$(browser launch --profile research-b)"
   browser run --browser "$first_id" "$PROBE" expect-saved

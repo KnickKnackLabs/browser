@@ -12,17 +12,17 @@ async function requireClosedChromium(dataDirectory) {
       if (error.code === 'ENOENT') continue;
       throw error;
     }
-    throw new Error(`Chromium lock ${name} remains in the source profile. Close Chromium and verify the profile is unused before forking.`);
+    throw new Error(`Chromium lock ${name} remains in the source profile. Close Chromium and verify the profile is unused before cloning.`);
   }
 }
 
-export async function forkProfile(source, destination, { copyDirectory = cp, signal } = {}) {
+export async function cloneProfile(source, destination, { copyDirectory = cp, signal } = {}) {
   profileDirectory(source);
   profileDirectory(destination);
   if (source === destination) throw new Error('Source and destination profiles must differ.');
 
   const sourceData = await profileDataDirectory(source);
-  const owner = { operation: 'fork', source, destination, pid: process.pid };
+  const owner = { operation: 'clone', source, destination, pid: process.pid };
   const releaseSource = await reserveProfile(source, owner);
   let destinationDirectory;
   let releaseDestination;
@@ -44,7 +44,7 @@ export async function forkProfile(source, destination, { copyDirectory = cp, sig
         signal?.throwIfAborted();
         const entry = await lstat(path);
         if (!entry.isDirectory() && !entry.isFile()) {
-          throw new Error(`Cannot fork profile containing a symlink or special file: ${path}`);
+          throw new Error(`Cannot clone profile containing a symlink or special file: ${path}`);
         }
         return true;
       },
