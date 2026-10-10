@@ -4,7 +4,6 @@ load helpers
 bats_require_minimum_version 1.5.0
 
 setup() {
-  setup_identity
   setup_browser_on_path
 }
 

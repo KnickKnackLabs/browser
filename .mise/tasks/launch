@@ -1,96 +1,15 @@
 #!/usr/bin/env bash
-#MISE description="Launch a browser instance for this agent"
-#USAGE example "browser launch" header="Launch a headless browser"
-#USAGE flag "--headed" help="Launch in headed mode (visible browser window)"
-#USAGE flag "--user-data-dir <dir>" help="Custom user data directory"
-
+#MISE description="Launch a named profile or a temporary browser"
+#USAGE example "browser launch --profile rentals --headed" header="Open a persistent rental-research profile"
+#USAGE example "browser launch --temporary" header="Open an isolated temporary browser"
+#USAGE flag "--profile <name>" help="Existing named profile"
+#USAGE flag "--temporary" help="Use disposable browser data"
+#USAGE flag "--headed" help="Show the browser window"
 set -euo pipefail
-source "$MISE_CONFIG_ROOT/lib/identity.sh"
-source "$MISE_CONFIG_ROOT/lib/patchright.sh"
+source "$MISE_CONFIG_ROOT/lib/runtime.sh"
 
-CACHE="$(cache_dir)"
-if [ ! -d "$CACHE" ] || ! ls "$CACHE"/chromium-* &>/dev/null; then
-  echo "Chromium not installed. Run: browser setup" >&2
-  exit 1
-fi
-
-# Generate browser ID (retry on collision)
-ID="b-$(openssl rand -hex 2)"
-while [ -f "$(pid_file_for_id "$ID")" ] && kill -0 "$(jq -r '.pid' "$(pid_file_for_id "$ID")" 2>/dev/null)" 2>/dev/null; do
-  ID="b-$(openssl rand -hex 2)"
-done
-
-# Find a free port starting from agent's base port
-BASE_PORT=$(echo -n "$AGENT" | cksum | awk '{print 9200 + ($1 % 200)}')
-PORT=$BASE_PORT
-while lsof -i ":$PORT" >/dev/null 2>&1; do
-  PORT=$((PORT + 1))
-  if [ $PORT -ge 9400 ]; then
-    echo "No free ports in range 9200-9399" >&2
-    exit 1
-  fi
-done
-
-# Find Chromium binary via Patchright
-ensure_patchright_node_module
-if ! CHROMIUM_PATH=$(cd "$MISE_CONFIG_ROOT/scripts" && node -e "
-  import { chromium } from 'patchright';
-  console.log(chromium.executablePath());
-" 2>/dev/null); then
-  CHROMIUM_PATH=""
-fi
-
-if [ -z "$CHROMIUM_PATH" ] || [ ! -f "$CHROMIUM_PATH" ]; then
-  echo "Could not find Chromium binary. Run: browser setup" >&2
-  exit 1
-fi
-
-# Launch Chromium with remote debugging
-HEADLESS_FLAG="--headless=new"
-if [ "${usage_headed:-false}" = "true" ]; then
-  HEADLESS_FLAG=""
-fi
-
-USER_DATA_ARGS=()
-if [[ -n "${usage_user_data_dir:-}" ]]; then
-  USER_DATA_ARGS+=("--user-data-dir=$usage_user_data_dir")
-fi
-
-"$CHROMIUM_PATH" \
-  --remote-debugging-port="$PORT" \
-  --no-first-run \
-  --no-default-browser-check \
-  --allow-chrome-scheme-url \
-  ${HEADLESS_FLAG:+"$HEADLESS_FLAG"} \
-  ${USER_DATA_ARGS[@]+"${USER_DATA_ARGS[@]}"} \
-  &>/dev/null &
-
-BROWSER_PID=$!
-
-sleep 1
-
-if ! kill -0 "$BROWSER_PID" 2>/dev/null; then
-  echo "Failed to launch Chromium" >&2
-  exit 1
-fi
-
-# Write PID files
-PID_ARGS=(--argjson pid "$BROWSER_PID" --argjson port "$PORT" --arg agent "$AGENT" --arg id "$ID")
-# shellcheck disable=SC2016 # jq program variables are expanded by jq, not Bash.
-PID_FILTER='{pid: $pid, port: $port, agent: $agent, id: $id}'
-if [[ -n "${usage_user_data_dir:-}" ]]; then
-  PID_ARGS+=(--arg user_data_dir "$usage_user_data_dir")
-  # shellcheck disable=SC2016 # jq program variables are expanded by jq, not Bash.
-  PID_FILTER='{pid: $pid, port: $port, agent: $agent, id: $id, user_data_dir: $user_data_dir}'
-fi
-PID_DATA=$(jq -nc ${PID_ARGS[@]+"${PID_ARGS[@]}"} "$PID_FILTER")
-
-echo "$PID_DATA" > "$(pid_file_for_id "$ID")"
-echo "$PID_DATA" > "$(pid_file_for_agent)"
-
-# ID to stdout (for capture), human info to stderr
-echo "$ID"
-echo "Browser launched for $AGENT" >&2
-echo "  ID:   $ID" >&2
-echo "  PID:  $BROWSER_PID" >&2
-echo "  Port: $PORT" >&2
+args=(launch)
+[ -z "${usage_profile:-}" ] || args+=(--profile "$usage_profile")
+[ "${usage_temporary:-false}" != true ] || args+=(--temporary)
+[ "${usage_headed:-false}" != true ] || args+=(--headed)
+node "$MISE_CONFIG_ROOT/scripts/browsers.mjs" ${args[@]+"${args[@]}"}

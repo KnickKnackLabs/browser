@@ -40,6 +40,9 @@ jobs:
       - name: Check committed whitespace
         run: git diff --check "$(git hash-object -t tree /dev/null)" HEAD
 
+      - name: Install Chromium for lifecycle integration tests
+        run: PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/browser" patchright install --with-deps chromium
+
       - name: Run tests
         run: mise run test
 

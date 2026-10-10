@@ -8,8 +8,19 @@ resolve_patchright_package_dir() {
   fi
 
   local install_root
-  install_root="$(mise where npm:patchright)"
-  printf '%s/lib/node_modules/patchright\n' "$install_root"
+  install_root="$(mise where npm:patchright)" || return
+
+  # Current mise installs use node_modules; npm global installs use lib/node_modules.
+  local package_dir
+  for package_dir in "$install_root/node_modules/patchright" "$install_root/lib/node_modules/patchright"; do
+    if [ -d "$package_dir" ]; then
+      printf '%s\n' "$package_dir"
+      return 0
+    fi
+  done
+
+  echo "Patchright package not found under $install_root. Run: mise install" >&2
+  return 1
 }
 
 ensure_patchright_node_module() {
@@ -17,7 +28,7 @@ ensure_patchright_node_module() {
   lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   local package_root="${BROWSER_PACKAGE_ROOT:-$(cd "$lib_dir/.." && pwd)}"
   local patchright_dir
-  patchright_dir="$(resolve_patchright_package_dir)"
+  patchright_dir="$(resolve_patchright_package_dir)" || return
 
   if [ ! -d "$patchright_dir" ]; then
     echo "Patchright package not found at $patchright_dir. Run: mise install" >&2

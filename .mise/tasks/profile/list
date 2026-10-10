@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="List named browser profiles"
+#USAGE example "browser profile list" header="List profiles without launching a browser"
+set -euo pipefail
+
+node "$MISE_CONFIG_ROOT/scripts/profiles.mjs" list

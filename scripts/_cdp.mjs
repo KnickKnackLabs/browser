@@ -1,191 +1,107 @@
-// _cdp.mjs — CDP connector + action dispatch for browser primitives
-//
-// Usage: node _cdp.mjs --action <name> [--agent <agent> | --browser <id>] [action-specific args]
-//
-// Connects to a running Chromium via CDP, performs one action, disconnects.
-// The browser keeps running after disconnect.
-
+// Execute one page action, then disconnect without closing the managed browser.
 import { chromium } from 'patchright';
 import { parseArgs } from 'node:util';
-import { readFileSync, existsSync, mkdirSync } from 'node:fs';
-import { chmodSync } from 'node:fs';
+import { mkdir, chmod } from 'node:fs/promises';
 import { join } from 'node:path';
-import { resolvePidFileById, resolvePidFileByAgent, resolveAuthFile, newAuthFile } from './_paths.mjs';
+import { readInstance, runtimeDirectory } from './instances.mjs';
 import { SERIALIZE_FN } from './_serialize.mjs';
 
 const { values, positionals } = parseArgs({
   options: {
-    action:   { type: 'string' },
-    agent:    { type: 'string' },
-    browser:  { type: 'string' },
+    action: { type: 'string' },
+    browser: { type: 'string' },
     selector: { type: 'string' },
-    depth:    { type: 'string', default: '1' },
-    value:    { type: 'string' },
-    stdout:   { type: 'boolean', default: false },
+    depth: { type: 'string', default: '1' },
+    value: { type: 'string' },
+    stdout: { type: 'boolean', default: false },
     'full-page': { type: 'boolean', default: false },
-    x:        { type: 'string', default: '0' },
-    y:        { type: 'string', default: '0' },
-    timeout:  { type: 'string', default: '30000' },
-    site:     { type: 'string' },
+    x: { type: 'string', default: '0' },
+    y: { type: 'string', default: '0' },
+    timeout: { type: 'string', default: '30000' },
   },
   allowPositionals: true,
-  strict: false,
 });
 
-const action = values.action;
-const browserId = values.browser;
-let agent = values.agent;
-
-if (!action) {
-  console.error('Usage: node _cdp.mjs --action <name> [--agent <agent> | --browser <id>] [args]');
-  process.exit(1);
+function required(value, name) {
+  if (value === undefined || value === '') throw new Error(`${name} is required.`);
+  return value;
 }
 
-// --- CDP connection ---
-
-async function connect() {
-  let pidFile;
-  if (browserId) {
-    pidFile = resolvePidFileById(browserId);
-    if (!pidFile) {
-      console.error(`No browser found with ID ${browserId}. Run: browser launch`);
-      process.exit(1);
-    }
-  } else if (agent) {
-    pidFile = resolvePidFileByAgent(agent);
-    if (!pidFile) {
-      console.error(`No browser running for ${agent}. Run: browser launch`);
-      process.exit(1);
-    }
-  } else {
-    console.error('Either --agent or --browser is required');
-    process.exit(1);
+function nonnegativeInteger(value, name) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 0) {
+    throw new Error(`${name} must be a nonnegative integer.`);
   }
-
-  const info = JSON.parse(readFileSync(pidFile, 'utf-8'));
-  if (!agent) agent = info.agent;
-
-  const browser = await chromium.connectOverCDP(`http://localhost:${info.port}`);
-  const contexts = browser.contexts();
-  let context = contexts[0] || await browser.newContext();
-  const pages = context.pages();
-  let page = pages[0] || await context.newPage();
-
-  return { browser, context, page };
+  return number;
 }
-
-// --- Action handlers ---
 
 const actions = {
-  async goto() {
-    const url = positionals[0];
-    if (!url) { console.error('Usage: --action goto <url>'); process.exit(1); }
-    const { browser, page } = await connect();
-    await page.goto(url, { waitUntil: 'domcontentloaded' });
+  async goto(page) {
+    await page.goto(required(positionals[0], 'URL'), { waitUntil: 'domcontentloaded' });
     console.log(page.url());
-    await browser.close();
   },
-
-  async content() {
+  async content(page) {
     const selector = values.selector || positionals[0] || 'body';
-    const depth = parseInt(values.depth, 10);
-    const { browser, page } = await connect();
-    const html = await page.evaluate(SERIALIZE_FN, { selector, depth });
-    process.stdout.write(html);
-    await browser.close();
+    const depth = nonnegativeInteger(values.depth, 'Depth');
+    process.stdout.write(await page.evaluate(SERIALIZE_FN, { selector, depth }));
   },
-
-  async fill() {
-    const selector = values.selector || positionals[0];
-    const fillValue = values.value || positionals[1];
-    if (!selector || fillValue === undefined) {
-      console.error('Usage: --action fill --selector <sel> --value <val>');
-      process.exit(1);
-    }
-    const { browser, page } = await connect();
-    await page.fill(selector, fillValue);
-    await browser.close();
+  async fill(page) {
+    const selector = required(values.selector ?? positionals[0], 'Selector');
+    const value = values.value ?? positionals[1];
+    if (value === undefined) throw new Error('Input value is required.');
+    await page.fill(selector, value);
   },
-
-  async click() {
-    const selector = values.selector || positionals[0];
-    if (!selector) { console.error('Usage: --action click --selector <sel>'); process.exit(1); }
-    const { browser, page } = await connect();
-    await page.click(selector);
-    await browser.close();
+  async click(page) {
+    await page.click(required(values.selector ?? positionals[0], 'Selector'));
   },
-
-  async screenshot() {
-    const { browser, page } = await connect();
+  async screenshot(page) {
     const options = { type: 'png', fullPage: values['full-page'] };
     if (values.stdout) {
-      const buf = await page.screenshot(options);
-      process.stdout.write(buf);
-    } else {
-      const dir = '/tmp/browser-screenshots';
-      mkdirSync(dir, { recursive: true });
-      const path = join(dir, `${agent}-${Date.now()}.png`);
-      await page.screenshot({ ...options, path });
-      console.log(path);
+      process.stdout.write(await page.screenshot(options));
+      return;
     }
-    await browser.close();
+    const directory = join(runtimeDirectory, 'screenshots');
+    await mkdir(directory, { recursive: true, mode: 0o700 });
+    const path = join(directory, `${values.browser}-${Date.now()}.png`);
+    await page.screenshot({ ...options, path });
+    await chmod(path, 0o600);
+    console.log(path);
   },
-
-  async scroll() {
+  async scroll(page) {
     const x = Number(values.x);
     const y = Number(values.y);
     if (!Number.isFinite(x) || !Number.isFinite(y) || (x === 0 && y === 0)) {
-      console.error('Usage: --action scroll [--x <pixels>] [--y <pixels>] (at least one nonzero finite delta)');
-      process.exit(1);
+      throw new Error('Scroll requires at least one nonzero finite delta.');
     }
-    const { browser, page } = await connect();
     await page.mouse.wheel(x, y);
-    await browser.close();
   },
-
-  async 'save-auth'() {
-    const site = values.site || positionals[0];
-    if (!site) { console.error('Usage: --action save-auth --site <site>'); process.exit(1); }
-    const { browser, context } = await connect();
-    const authPath = newAuthFile(agent, site);
-    await context.storageState({ path: authPath });
-    chmodSync(authPath, 0o600);
-    console.log(`Auth saved: ${authPath}`);
-    await browser.close();
-  },
-
-  async 'load-auth'() {
-    const site = values.site || positionals[0];
-    if (!site) { console.error('Usage: --action load-auth --site <site>'); process.exit(1); }
-    const authPath = resolveAuthFile(agent, site);
-    if (!existsSync(authPath)) {
-      console.error(`No auth found for ${agent} @ ${site}`);
-      console.error(`Run: browser login ${site}`);
-      process.exit(1);
-    }
-    const { browser, context } = await connect();
-    const state = JSON.parse(readFileSync(authPath, 'utf-8'));
-    if (state.cookies && state.cookies.length > 0) {
-      await context.addCookies(state.cookies);
-    }
-    console.log(`Auth loaded from: ${authPath}`);
-    await browser.close();
-  },
-
-  async wait() {
-    const selector = values.selector || positionals[0];
-    if (!selector) { console.error('Usage: --action wait --selector <sel> [--timeout <ms>]'); process.exit(1); }
-    const timeout = parseInt(values.timeout, 10);
-    const { browser, page } = await connect();
+  async wait(page) {
+    const selector = required(values.selector ?? positionals[0], 'Selector');
+    const timeout = nonnegativeInteger(values.timeout, 'Timeout');
     await page.waitForSelector(selector, { timeout });
-    await browser.close();
   },
 };
 
-// --- Dispatch ---
-
-if (!actions[action]) {
-  console.error(`Unknown action: ${action}`);
-  process.exit(1);
+async function runAction() {
+  const action = actions[values.action];
+  if (typeof action !== 'function' || !Object.hasOwn(actions, values.action)) {
+    throw new Error(`Unknown action: ${values.action}`);
+  }
+  const record = await readInstance(values.browser);
+  const browser = await chromium.connectOverCDP(record.endpoint, { timeout: 3000 });
+  try {
+    const context = browser.contexts()[0];
+    if (!context) throw new Error('Managed browser has no context.');
+    const page = context.pages()[0] || await context.newPage();
+    await action(page);
+  } finally {
+    await browser.close();
+  }
 }
-await actions[action]();
+
+try {
+  await runAction();
+} catch (error) {
+  console.error(`Error: ${error.message}`);
+  process.exitCode = 1;
+}

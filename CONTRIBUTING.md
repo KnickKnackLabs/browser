@@ -1,46 +1,55 @@
 # Contributing to browser
 
-`browser` is a browser automation toolkit. It launches, controls, and scripts Chromium instances with saved auth state.
+`browser` manages named Chromium profiles and running browser instances. It knows nothing about callers' identities: humans, agents, and scripts use the same interface.
 
 ## Structure
 
-```
-browser/
-├── .mise/tasks/     # Public CLI tasks, BATS workflow, and observational doctor
-├── scripts/         # Node.js scripts (harness, CDP bridge, login flows)
-│   └── login/       # Per-site automated login scripts
-├── lib/             # Shared self-locating shell libraries
-├── test/            # BATS tests
-└── README.tsx       # Programmable source for generated README.md
-```
+- `.mise/tasks/`: thin public CLI entry points.
+- `lib/runtime.sh`: Chromium cache and package initialization.
+- `scripts/profile-store.mjs`: profile names, paths, creation, and discovery.
+- `scripts/profile-reservation.mjs`: exclusive profile ownership shared by browser workers and clones.
+- `scripts/clone-profile.mjs`: closed-source validation, copying, atomic data publication, and rollback.
+- `scripts/instances.mjs`: private, versioned instance records and endpoint validation.
+- `scripts/browsers.mjs`: launch/list/close orchestration.
+- `scripts/browser-worker.mjs`: owns one persistent Chromium context and its cleanup.
+- `scripts/_cdp.mjs`: page actions against a selected instance.
+- `scripts/_harness.mjs`: runs a workflow in a temporary or attached context.
+- `scripts/workflows/`: built-in user workflows, separate from implementation modules.
+- `test/`: BATS public-task tests, focused library tests, and real Chromium integration tests.
+- `README.tsx`: source for generated `README.md`.
 
-## Key concepts
+## State ownership
 
-- **Agent identity**: Resolved from `GIT_AUTHOR_EMAIL` or `git config user.email`. Used to namespace auth state, PID files, and screenshots.
-- **Auth state**: Stored at `~/.config/browser/<agent>/<site>.json`. Falls back to `~/.config/shimmer/browser/<agent>/` for migration.
-- **PID files**: `/tmp/browser-id-<id>.json` (canonical) and `/tmp/browser-<agent>.json` (agent-default, points to latest).
-- **Browser IDs**: Short random IDs like `b-a1f3`, returned by `launch`, used by other commands via `--browser`.
+Profiles live at `~/.local/share/browser/profiles/<name>/data`, configurable with `BROWSER_PROFILES_DIR`. Workers and clones exclusively create `running.json` through the same reservation owner before using a profile. Workers reserve one profile; clones reserve both source and destination. This prevents both conflicting writes and Chromium forwarding a second launch into an existing process. Chromium still applies its own native data-directory protections.
 
-## Dependencies
+Instance records live at `~/.local/state/browser/instances/<id>.json`, configurable with `BROWSER_RUNTIME_DIR`. IDs select exact instances; there is no latest-browser default. Records store a worker PID, optional profile name, and the browser-specific IPv4 loopback WebSocket endpoint. Close uses that endpoint to request graceful Chromium shutdown; it never signals a potentially reused PID. List is observational, including stopped records.
 
-- `patchright` (Playwright fork) for browser automation
-- `jq` for JSON manipulation in shell tasks
-- `1password-cli` for credential resolution in `login`
-- All managed via mise
+On clean shutdown the worker releases its reservation, removes its registry record, and deletes temporary data if applicable. Named profile data is retained. An abrupt worker kill can leave a reservation; automatic crash recovery is deliberately not implemented. Do not remove a stale reservation until its owner process has stopped and no Chromium process uses that profile. Unknown or legacy state is not automatically imported or deleted.
 
-## Testing
+Cloning requires a closed source and a new destination. The destination's `data` directory appears only after the entire copy completes; launch cannot open partial data. Remaining native Chromium singleton files, symlinks, and special files are refused. Copy failures and cooperative cancellation remove the newly created destination while its reservation is still held, then release the source. A hard process kill can leave an incomplete directory or reservations; it is not automatically recovered. Copies retain private local login data but still use the same remote accounts. Reservations coordinate managed commands; do not point other tools directly at these data directories while cloning.
+
+`cloneProfile` accepts a narrow copy capability and an AbortSignal for deterministic failure/cancellation tests. CLI signal handling stays in `profiles.mjs`, not the storage/copy owner.
+
+Saved-auth commands, Git identity detection, Shimmer migration, and implicit login loading are removed. Login happens in a headed profile. Attaching a script reuses the selected browser's context; temporary script runs start fresh.
+
+## Validation
 
 ```bash
+mise trust
+mise install
+mise run setup
 mise run test
 mise run doctor
-codebase lint "$PWD"
-readme build --check
 ```
 
-Tests use the KKL-maintained BATS fork and Rush with a four-job default across and within files. Test helpers are in `test/helpers.bash` and derive the repository from `$BATS_TEST_DIRNAME`. Tests must isolate mutable state per test; use `mise run test --jobs 1` for serial debugging.
+Lifecycle tests require real Chromium. They verify that two clones begin with a dummy cookie, diverge locally, and leave the baseline's cookie unchanged. `test/profile-clone.bats` covers filesystem refusals and CLI behavior; its boundary probe tests the internal copy/reservation seam, including rollback and cancellation.
 
-`mise run doctor` is observational. It reports generated README, configured lint, and optional local hook state without repairing the checkout. Edit `README.tsx`, then run `readme build`; do not hand-edit `README.md`.
+CI installs Chromium (including Linux dependencies) and runs tests on Ubuntu and macOS. Without the browser cache, lifecycle tests explicitly skip; that is not evidence that the lifecycle works. Tests isolate registry and profile roots without overriding HOME or mise's trust state. The public test task supports `mise run test test/lifecycle.bats` and `--jobs 1` for serial debugging.
+
+Dependencies are pinned through mise: Patchright, Node, and the KKL BATS fork with Rush. `lib/patchright.sh` makes the mise-managed package resolvable without committing `node_modules`.
+
+Edit `README.tsx`, then run `readme build`; do not hand-edit `README.md`. Doctor observes generated docs, configured lints, and optional local hook state without repairing the checkout.
 
 ## Release notes
 
-Use signed tags for releases. Keep runtime package dependencies resolvable from a fresh shiv/mise install, and do not commit generated `node_modules/` directories.
+Use signed tags for releases. Verify runtime dependencies resolve from a fresh shiv/mise install. Profile and instance directories contain private session state and must never be committed.

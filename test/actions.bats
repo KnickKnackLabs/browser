@@ -3,7 +3,6 @@
 load helpers
 
 setup() {
-  setup_identity
   setup_browser_on_path
 
   export NODE_LOG="$BATS_TEST_TMPDIR/node.log"

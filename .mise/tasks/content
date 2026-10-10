@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
 #MISE description="Query DOM elements in the browser"
-#USAGE example "browser content main --depth 2" header="Inspect a page region"
+#USAGE example "browser content --browser b-a1f3 main --depth 2" header="Inspect a page region"
 #USAGE arg "[selector]" help="CSS selector (default: body)"
 #USAGE flag "-d --depth <depth>" help="How many levels deep to show (default: 1)"
-#USAGE flag "-b --browser <browser>" help="Browser ID (default: agent's latest browser)"
+#USAGE flag "-b --browser <browser>" help="Required browser ID returned by launch"
 
 set -euo pipefail
-source "$MISE_CONFIG_ROOT/lib/identity.sh"
+source "$MISE_CONFIG_ROOT/lib/runtime.sh"
 
 SELECTOR="${usage_selector:-body}"
 DEPTH="${usage_depth:-1}"
-BROWSER_ID="${usage_browser:-}"
+BROWSER_ID="${usage_browser:?Pass --browser ID}"
 
-ARGS=(--action content --agent "$AGENT" --selector "$SELECTOR" --depth "$DEPTH")
-[ -n "$BROWSER_ID" ] && ARGS+=(--browser "$BROWSER_ID")
+ARGS=(--action content --browser "$BROWSER_ID" --selector "$SELECTOR" --depth "$DEPTH")
 
 node "$MISE_CONFIG_ROOT/scripts/_cdp.mjs" ${ARGS[@]+"${ARGS[@]}"}

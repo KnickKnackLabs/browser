@@ -5,7 +5,6 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-export const site = 'github.com';
 
 export default async function({ page, args }) {
   const imagePath = args[0];

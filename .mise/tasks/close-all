@@ -1,71 +1,12 @@
 #!/usr/bin/env bash
-#MISE description="Close all browser instances for this agent"
-#USAGE example "browser close-all" header="Close every browser owned by the current agent"
-
+#MISE description="Close every browser in this user's managed registry"
+#USAGE example "browser close-all --all" header="Explicitly close every managed browser"
+#USAGE flag "--all" help="Approve closing every managed browser"
 set -euo pipefail
-source "$MISE_CONFIG_ROOT/lib/identity.sh"
+source "$MISE_CONFIG_ROOT/lib/runtime.sh"
 
-CLOSED=0
-FAILED=0
-RUNTIME_DIR="$(browser_runtime_dir)"
-
-# Check new-style PID files
-for pidfile in "$RUNTIME_DIR"/browser-id-*.json; do
-  [ -f "$pidfile" ] || continue
-
-  FILE_AGENT=$(jq -r '.agent // empty' "$pidfile" 2>/dev/null || echo "")
-  [ "$FILE_AGENT" = "$AGENT" ] || continue
-
-  PID=$(jq -r '.pid' "$pidfile" 2>/dev/null || echo "")
-  ID=$(jq -r '.id // empty' "$pidfile" 2>/dev/null || echo "")
-
-  if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
-    if ! kill "$PID" 2>/dev/null; then
-      echo "Failed to close $ID (pid $PID)" >&2
-      FAILED=$((FAILED + 1))
-      continue
-    fi
-    echo "Closed $ID (pid $PID)"
-    CLOSED=$((CLOSED + 1))
-  fi
-
-  rm -f "$pidfile"
-done
-
-# Also check legacy PID files
-for pidfile in "$RUNTIME_DIR"/shimmer-browser-id-*.json; do
-  [ -f "$pidfile" ] || continue
-
-  FILE_AGENT=$(jq -r '.agent // empty' "$pidfile" 2>/dev/null || echo "")
-  [ "$FILE_AGENT" = "$AGENT" ] || continue
-
-  PID=$(jq -r '.pid' "$pidfile" 2>/dev/null || echo "")
-  ID=$(jq -r '.id // empty' "$pidfile" 2>/dev/null || echo "")
-
-  if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
-    if ! kill "$PID" 2>/dev/null; then
-      echo "Failed to close $ID (pid $PID) [legacy]" >&2
-      FAILED=$((FAILED + 1))
-      continue
-    fi
-    echo "Closed $ID (pid $PID) [legacy]"
-    CLOSED=$((CLOSED + 1))
-  fi
-
-  rm -f "$pidfile"
-done
-
-# Clean up agent-default PID files
-rm -f "$(pid_file_for_agent)"
-rm -f "$RUNTIME_DIR/shimmer-browser-${AGENT}.json"
-
-if [ "$CLOSED" -eq 0 ]; then
-  echo "No browsers running for $AGENT"
-else
-  echo "Closed $CLOSED browser(s)"
-fi
-
-if [ "$FAILED" -gt 0 ]; then
-  echo "Failed to close $FAILED browser(s); PID files were preserved" >&2
+if [ "${usage_all:-false}" != true ]; then
+  echo 'Use --all to approve closing every managed browser.' >&2
   exit 1
 fi
+node "$MISE_CONFIG_ROOT/scripts/browsers.mjs" close-all --all
