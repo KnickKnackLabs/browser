@@ -42,7 +42,8 @@ async function launch() {
   const workerScript = fileURLToPath(new URL('./browser-worker.mjs', import.meta.url));
   const worker = fork(workerScript, [JSON.stringify(options)], {
     detached: true,
-    stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+    // Keep worker failures visible; otherwise cleanup errors look like close timeouts.
+    stdio: ['ignore', 'ignore', 'inherit', 'ipc'],
   });
 
   try {
