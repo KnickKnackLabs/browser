@@ -51,6 +51,27 @@ load helpers
   grep -q 'xargs printf' "$REPO_DIR/.mise/tasks/run"
 }
 
+@test "run stops before script resolution when argument parsing fails" {
+  setup_identity
+  setup_browser_on_path
+
+  mock_bin="$BATS_TEST_TMPDIR/parser-bin"
+  mkdir -p "$mock_bin"
+  cat > "$mock_bin/xargs" <<'BASH'
+#!/usr/bin/env bash
+echo 'Injected argument parser failure' >&2
+exit 42
+BASH
+  chmod +x "$mock_bin/xargs"
+  export PATH="$mock_bin:$PATH"
+
+  run browser run missing-script argument
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Injected argument parser failure"* ]]
+  [[ "$output" == *"Failed to parse script arguments."* ]]
+  [[ "$output" != *"Script not found"* ]]
+}
+
 @test "no task references shimmer-browser PID path directly" {
   task_files="$(find "$REPO_DIR/.mise/tasks" -type f)"
   while IFS= read -r task; do

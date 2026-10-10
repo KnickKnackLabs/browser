@@ -18,9 +18,15 @@ BROWSER_ID="${usage_browser:-}"
 # Safe variadic arg parsing (no eval — see or#146)
 SCRIPT_ARGS=()
 if [ -n "${usage_args:-}" ]; then
-  while IFS= read -r arg; do
-    SCRIPT_ARGS+=("$arg")
-  done < <(printf '%s' "${usage_args}" | xargs printf '%s\n')
+  if PARSED_ARGS=$(printf '%s' "${usage_args}" | xargs printf '%s\n'); then
+    while IFS= read -r arg; do
+      SCRIPT_ARGS+=("$arg")
+    done <<< "$PARSED_ARGS"
+  else
+    parse_status=$?
+    echo "Failed to parse script arguments." >&2
+    exit "$parse_status"
+  fi
 fi
 
 # Resolve script: absolute path or built-in name

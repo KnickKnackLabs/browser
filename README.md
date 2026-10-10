@@ -5,7 +5,7 @@
 **Agent-scoped Chromium automation with saved authentication.**
 
 ![tasks: 21](https://img.shields.io/badge/tasks-21-blue?style=flat)
-[![tests: 61](https://img.shields.io/badge/tests-61-brightgreen?style=flat)](test/)
+[![tests: 62](https://img.shields.io/badge/tests-62-brightgreen?style=flat)](test/)
 ![CI: ubuntu-latest + macos-latest](https://img.shields.io/badge/CI-ubuntu--latest%20%2B%20macos--latest-4EAA25?style=flat)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat)](LICENSE)
 
@@ -95,7 +95,7 @@ codebase pre-commit
 <details>
 <summary><b>Current repository health</b></summary>
 
-This checkout exposes 21 public tasks and 61 BATS tests, with this configured convention lint portfolio.
+This checkout exposes 21 public tasks and 62 BATS tests, with this configured convention lint portfolio.
 
 ```
 @all
