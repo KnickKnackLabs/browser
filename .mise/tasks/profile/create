@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#MISE description="Create an empty named browser profile"
+#USAGE arg "<name>" help="Profile name (letters, digits, underscores, and hyphens)"
+#USAGE example "browser profile create rentals" header="Create a rental-research profile"
+set -euo pipefail
+
+node "$MISE_CONFIG_ROOT/scripts/profiles.mjs" create "$usage_name"

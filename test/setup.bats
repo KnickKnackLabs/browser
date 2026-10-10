@@ -22,25 +22,23 @@ load helpers
 }
 
 @test "all tasks are executable" {
-  for task in "$REPO_DIR/.mise/tasks/"*; do
+  task_files="$(find "$REPO_DIR/.mise/tasks" -type f)"
+  while IFS= read -r task; do
     assert_file_executable "$task"
-  done
+  done <<< "$task_files"
 }
 
 @test "all tasks use set -euo pipefail" {
-  for task in "$REPO_DIR/.mise/tasks/"*; do
+  task_files="$(find "$REPO_DIR/.mise/tasks" -type f)"
+  while IFS= read -r task; do
     assert_file_contains 'set -euo pipefail' "$task" \
       "$(basename "$task") missing set -euo pipefail"
-  done
+  done <<< "$task_files"
 }
 
-@test "mutating and identity-scoped tasks source identity.sh" {
-  for task in "$REPO_DIR/.mise/tasks/"*; do
-    local name=$(basename "$task")
-    if [ "$name" = "doctor" ] || [ "$name" = "list" ] || [ "$name" = "setup" ] || [ "$name" = "test" ]; then
-      continue
-    fi
-    assert_file_contains 'source.*identity.sh' "$task" \
+@test "legacy browser and auth tasks source identity.sh" {
+  for name in launch close close-all goto click fill content scroll screenshot wait login run save-auth load-auth status; do
+    assert_file_contains 'source.*identity.sh' "$REPO_DIR/.mise/tasks/$name" \
       "$name doesn't source identity.sh"
   done
 }
@@ -54,7 +52,8 @@ load helpers
 }
 
 @test "no task references shimmer-browser PID path directly" {
-  for task in "$REPO_DIR/.mise/tasks/"*; do
+  task_files="$(find "$REPO_DIR/.mise/tasks" -type f)"
+  while IFS= read -r task; do
     local name=$(basename "$task")
     # close-all and list intentionally check legacy paths for migration
     if [ "$name" = "close-all" ] || [ "$name" = "list" ]; then
@@ -62,7 +61,7 @@ load helpers
     fi
     assert_file_not_contains 'shimmer-browser' "$task" \
       "$name references legacy shimmer-browser PID path"
-  done
+  done <<< "$task_files"
 }
 
 @test "scripts reference _paths.mjs not inline path resolution" {

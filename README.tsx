@@ -30,12 +30,20 @@ function read(path: string): string {
   return readFileSync(path, "utf8");
 }
 
-function executableTaskCount(): number {
-  if (!existsSync(TASK_DIR)) return 0;
-  return readdirSync(TASK_DIR)
-    .map((entry) => join(TASK_DIR, entry))
-    .filter((path) => statSync(path).isFile() && (statSync(path).mode & 0o111) !== 0)
-    .length;
+function executableTaskCount(directory = TASK_DIR): number {
+  if (!existsSync(directory)) return 0;
+
+  let count = 0;
+  for (const entry of readdirSync(directory)) {
+    const path = join(directory, entry);
+    const stat = statSync(path);
+    if (stat.isDirectory()) {
+      count += executableTaskCount(path);
+    } else if (stat.isFile() && (stat.mode & 0o111) !== 0) {
+      count += 1;
+    }
+  }
+  return count;
 }
 
 function testCount(): number {
@@ -111,6 +119,20 @@ browser click 'button[type=submit]'
 browser fill 'input[name=q]' 'browser automation'`}</CodeBlock>
       <Paragraph>
         Commands default to the agent's latest browser. Use <Code>--browser b-a1f3</Code> when several instances are running.
+      </Paragraph>
+    </Section>
+
+    <Section title="Named profiles">
+      <CodeBlock lang="bash">{`browser profile create rentals
+browser profile list`}</CodeBlock>
+      <Paragraph>
+        A profile starts as an empty, private Chromium data directory. Creating and listing profiles requires no agent identity and does not launch a browser or copy saved logins.
+      </Paragraph>
+      <Paragraph>
+        Profiles live under <Code>~/.local/share/browser/profiles/NAME/data</Code>. Set <Code>BROWSER_PROFILES_DIR</Code> to choose a different profile-storage root. Profile names start with a letter or digit and contain only letters, digits, underscores, and hyphens.
+      </Paragraph>
+      <Paragraph>
+        Profile storage is available now; launching by profile and forking profiles are not implemented yet. Existing launch and auth commands still use the agent-scoped workflow below.
       </Paragraph>
     </Section>
 

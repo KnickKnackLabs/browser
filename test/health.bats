@@ -33,7 +33,8 @@ setup() {
 
 @test "public tasks provide examples through their real help" {
   while IFS= read -r task_file; do
-    task_name="$(basename "$task_file")"
+    task_path="${task_file#"$REPO_DIR/.mise/tasks/"}"
+    task_name="${task_path//\//:}"
 
     run browser "$task_name" --help
     [ "$status" -eq 0 ]

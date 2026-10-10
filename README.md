@@ -4,8 +4,8 @@
 
 **Agent-scoped Chromium automation with saved authentication.**
 
-![tasks: 19](https://img.shields.io/badge/tasks-19-blue?style=flat)
-[![tests: 53](https://img.shields.io/badge/tests-53-brightgreen?style=flat)](test/)
+![tasks: 21](https://img.shields.io/badge/tasks-21-blue?style=flat)
+[![tests: 61](https://img.shields.io/badge/tests-61-brightgreen?style=flat)](test/)
 ![CI: ubuntu-latest + macos-latest](https://img.shields.io/badge/CI-ubuntu--latest%20%2B%20macos--latest-4EAA25?style=flat)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat)](LICENSE)
 
@@ -48,6 +48,19 @@ browser fill 'input[name=q]' 'browser automation'
 
 Commands default to the agent's latest browser. Use `--browser b-a1f3` when several instances are running.
 
+## Named profiles
+
+```bash
+browser profile create rentals
+browser profile list
+```
+
+A profile starts as an empty, private Chromium data directory. Creating and listing profiles requires no agent identity and does not launch a browser or copy saved logins.
+
+Profiles live under `~/.local/share/browser/profiles/NAME/data`. Set `BROWSER_PROFILES_DIR` to choose a different profile-storage root. Profile names start with a letter or digit and contain only letters, digits, underscores, and hyphens.
+
+Profile storage is available now; launching by profile and forking profiles are not implemented yet. Existing launch and auth commands still use the agent-scoped workflow below.
+
 ## Authenticated workflows
 
 Saved browser state is namespaced by agent and site. Login can use a supported automatic flow or a visible interactive browser.
@@ -82,7 +95,7 @@ codebase pre-commit
 <details>
 <summary><b>Current repository health</b></summary>
 
-This checkout exposes 19 public tasks and 53 BATS tests, with this configured convention lint portfolio.
+This checkout exposes 21 public tasks and 61 BATS tests, with this configured convention lint portfolio.
 
 ```
 @all

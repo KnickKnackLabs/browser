@@ -16,6 +16,7 @@ browser/
 
 ## Key concepts
 
+- **Named profiles**: Empty Chromium data directories at `~/.local/share/browser/profiles/<name>/data`, or under `BROWSER_PROFILES_DIR`. `profile:create` and `profile:list` are independent of identity and browser processes; `scripts/profiles.mjs` owns validation and storage. Profile-based launching is not implemented yet.
 - **Agent identity**: Resolved from `GIT_AUTHOR_EMAIL` or `git config user.email`. Used to namespace auth state, PID files, and screenshots.
 - **Auth state**: Stored at `~/.config/browser/<agent>/<site>.json`. Falls back to `~/.config/shimmer/browser/<agent>/` for migration.
 - **PID files**: `/tmp/browser-id-<id>.json` (canonical) and `/tmp/browser-<agent>.json` (agent-default, points to latest).
