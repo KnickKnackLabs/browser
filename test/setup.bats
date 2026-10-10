@@ -13,7 +13,7 @@ load helpers
 @test "public commands no longer expose auth snapshot persistence" {
   setup_browser_on_path
   for task in login save-auth load-auth status; do
-    run browser "$task" --help
+    run env NO_COLOR=1 browser "$task" --help
     [ "$status" -ne 0 ]
     [[ "$output" == *"no task $task found"* ]]
   done
