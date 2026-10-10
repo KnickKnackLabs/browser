@@ -19,7 +19,7 @@ setup_identity() {
   source "$REPO_DIR/lib/identity.sh"
 }
 
-# Create a temp directory for test PID/auth files
+# Create a temp directory for test files
 setup_tmp() {
   export TEST_TMP="$BATS_TEST_TMPDIR/browser-test"
   mkdir -p "$TEST_TMP"

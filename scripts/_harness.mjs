@@ -1,176 +1,52 @@
-// _harness.mjs — Patchright harness for browser tasks
-//
-// Modes:
-//   login: Save storageState after authenticating (auto or interactive)
-//   run:   Load storageState, run a script module, close browser
-//          With --browser: attach to persistent browser via CDP instead
-
+// Run a Playwright module in a temporary browser or an existing CDP instance.
 import { chromium } from 'patchright';
 import { parseArgs } from 'node:util';
-import { existsSync, readFileSync, chmodSync } from 'node:fs';
-import { pathToFileURL, fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { resolvePidFileById } from './_paths.mjs';
 
 const { values, positionals } = parseArgs({
   options: {
-    mode:        { type: 'string' },
-    site:        { type: 'string' },
-    'auth-file': { type: 'string' },
-    script:      { type: 'string' },
-    headed:      { type: 'string', default: 'false' },
-    username:    { type: 'string' },
-    password:    { type: 'string' },
-    browser:     { type: 'string' },
+    script: { type: 'string' },
+    headed: { type: 'string', default: 'false' },
+    browser: { type: 'string' },
   },
   allowPositionals: true,
-  strict: false,
 });
 
-const mode = values.mode;
-const site = values.site;
-const authFile = values['auth-file'];
-const scriptPath = values.script;
-const headed = values.headed === 'true';
-const username = values.username;
-const password = values.password;
-const browserId = values.browser;
-
-// --- Login mode ---
-
-async function runLogin() {
-  const automated = username && password;
-
-  const scriptDir = dirname(fileURLToPath(import.meta.url));
-  const loginScriptPath = join(scriptDir, 'login', `${site}.mjs`);
-  const hasLoginScript = existsSync(loginScriptPath);
-
-  const canAutomate = automated && hasLoginScript;
-  const browser = await chromium.launch({ headless: canAutomate });
-  const context = await browser.newContext();
-  const page = await context.newPage();
-
-  let saved = false;
-  const saveAuth = async () => {
-    saved = true;
-    try {
-      await context.storageState({ path: authFile });
-      chmodSync(authFile, 0o600);
-    } catch {
-      // Context may be closing
-    }
-  };
-
-  page.on('framenavigated', async (frame) => {
-    if (frame !== page.mainFrame()) return;
-    if (frame.url() === 'about:blank') return;
-    await saveAuth();
-    if (!canAutomate) console.log('Auth captured.');
-  });
-
-  if (canAutomate) {
-    const loginModule = await import(pathToFileURL(loginScriptPath).href);
-    await loginModule.default({ page, username, password });
-    await saveAuth();
-    await browser.close();
-
-    if (!saved) {
-      console.error('Login may have failed — no auth state captured.');
-      process.exit(1);
-    }
-    console.log('Login successful.');
-  } else {
-    if (automated && !hasLoginScript) {
-      console.log(`No automated login script for ${site} — opening interactive login.`);
-    }
-    await page.goto(`https://${site}`);
-    await new Promise(resolve => page.on('close', resolve));
-    await browser.close();
+async function openBrowser() {
+  if (!values.browser) {
+    return chromium.launch({ headless: values.headed !== 'true' });
   }
-}
 
-// --- Run mode: persistent browser (CDP) ---
-
-async function runWithPersistentBrowser() {
-  const pidFile = resolvePidFileById(browserId);
+  const pidFile = resolvePidFileById(values.browser);
   if (!pidFile) {
-    console.error(`No browser found with ID ${browserId}. Run: browser launch`);
-    process.exit(1);
+    throw new Error(`No browser found with ID ${values.browser}. Run: browser launch`);
   }
 
-  const hasAuth = authFile && existsSync(authFile);
   const info = JSON.parse(readFileSync(pidFile, 'utf-8'));
-  const browser = await chromium.connectOverCDP(`http://localhost:${info.port}`);
-
-  const contexts = browser.contexts();
-  let context = contexts[0];
-  let page;
-
-  if (context) {
-    const pages = context.pages();
-    page = pages[0] || await context.newPage();
-  } else {
-    context = hasAuth
-      ? await browser.newContext({ storageState: authFile })
-      : await browser.newContext();
-    page = await context.newPage();
-  }
-
-  const scriptModule = await import(pathToFileURL(scriptPath).href);
-
-  try {
-    await scriptModule.default({ page, context, browser, args: positionals });
-  } catch (err) {
-    console.error(`Script failed: ${err.message}`);
-    await browser.close();
-    process.exit(1);
-  }
-
-  if (hasAuth) {
-    await context.storageState({ path: authFile });
-    chmodSync(authFile, 0o600);
-  }
-  await browser.close();
+  return chromium.connectOverCDP(`http://127.0.0.1:${info.port}`);
 }
 
-// --- Run mode: ephemeral browser ---
+async function runScript() {
+  if (!values.script) throw new Error('A script path is required.');
 
-async function runEphemeral() {
-  const hasAuth = authFile && existsSync(authFile);
-  const browser = await chromium.launch({ headless: !headed });
-  const context = hasAuth
-    ? await browser.newContext({ storageState: authFile })
-    : await browser.newContext();
-  const page = await context.newPage();
-
-  const scriptModule = await import(pathToFileURL(scriptPath).href);
-
+  const browser = await openBrowser();
   try {
-    await scriptModule.default({ page, context, browser, args: positionals });
-  } catch (err) {
-    console.error(`Script failed: ${err.message}`);
-    await browser.close();
-    process.exit(1);
-  }
+    const context = browser.contexts()[0] || await browser.newContext();
+    const page = context.pages()[0] || await context.newPage();
+    const scriptModule = await import(pathToFileURL(values.script).href);
 
-  if (hasAuth) {
-    await context.storageState({ path: authFile });
-    chmodSync(authFile, 0o600);
+    await scriptModule.default({ page, context, browser, args: positionals });
+  } finally {
+    // For CDP connections, close disconnects the client; the browser stays running.
+    await browser.close();
   }
-  await browser.close();
 }
 
-// --- Dispatch ---
-
-if (mode === 'login') {
-  await runLogin();
-} else if (mode === 'run') {
-  if (browserId) {
-    await runWithPersistentBrowser();
-  } else {
-    await runEphemeral();
-  }
-} else {
-  console.error(`Unknown mode: ${mode}`);
-  process.exit(1);
+try {
+  await runScript();
+} catch (error) {
+  console.error(`Script failed: ${error.message}`);
+  process.exitCode = 1;
 }

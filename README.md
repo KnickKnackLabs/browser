@@ -2,10 +2,10 @@
 
 # browser
 
-**Agent-scoped Chromium automation with saved authentication.**
+**Chromium automation with named profile storage.**
 
-![tasks: 21](https://img.shields.io/badge/tasks-21-blue?style=flat)
-[![tests: 62](https://img.shields.io/badge/tests-62-brightgreen?style=flat)](test/)
+![tasks: 17](https://img.shields.io/badge/tasks-17-blue?style=flat)
+[![tests: 58](https://img.shields.io/badge/tests-58-brightgreen?style=flat)](test/)
 ![CI: ubuntu-latest + macos-latest](https://img.shields.io/badge/CI-ubuntu--latest%20%2B%20macos--latest-4EAA25?style=flat)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat)](LICENSE)
 
@@ -59,21 +59,20 @@ A profile starts as an empty, private Chromium data directory. Creating and list
 
 Profiles live under `~/.local/share/browser/profiles/NAME/data`. Set `BROWSER_PROFILES_DIR` to choose a different profile-storage root. Profile names start with a letter or digit and contain only letters, digits, underscores, and hyphens.
 
-Profile storage is available now; launching by profile and forking profiles are not implemented yet. Existing launch and auth commands still use the agent-scoped workflow below.
+Profile storage is available now; launching by profile and forking profiles are not implemented yet. Existing browser commands still require agent identity until the lifecycle migration is complete.
 
-## Authenticated workflows
+## Scripted workflows
 
-Saved browser state is namespaced by agent and site. Login can use a supported automatic flow or a visible interactive browser.
+Export a Playwright module whose default function receives `{ page, context, browser, args }`. Run it in a fresh temporary browser, or attach to a running instance to use that browser's current session.
 
 ```bash
-browser login github.com
-browser launch
-browser load-auth github.com
-browser goto https://github.com/settings/profile
-browser save-auth github.com
+browser run /path/to/research.mjs
+browser run --browser b-a1f3 /path/to/research.mjs
 ```
 
-For a larger workflow, export a Playwright module and run it with `browser run`. See `scripts/github-avatar-upload.mjs` for the script contract.
+Attached runs leave the browser running. Temporary runs close their browser afterward. Scripts are imported once, and no site metadata or saved-auth files are consulted. See `scripts/github-avatar-upload.mjs` for an example; it requires an already logged-in browser.
+
+Saved-auth commands (`login`, `save-auth`, `load-auth`, and auth `status`) and `run --site` have been removed. Old snapshot files remain untouched on disk but are no longer loaded or updated. Log in manually in a headed browser; profile-based persistence is the next lifecycle change.
 
 ## Development
 
@@ -95,7 +94,7 @@ codebase pre-commit
 <details>
 <summary><b>Current repository health</b></summary>
 
-This checkout exposes 21 public tasks and 62 BATS tests, with this configured convention lint portfolio.
+This checkout exposes 17 public tasks and 58 BATS tests, with this configured convention lint portfolio.
 
 ```
 @all

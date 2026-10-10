@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-#MISE description="Run a Playwright script with saved browser auth"
+#MISE description="Run a Playwright script in a temporary or running browser"
 #USAGE example "browser run github-avatar-upload /path/to/avatar.png" header="Run a saved Playwright workflow"
 #USAGE arg "<script>" help="Script name (built-in) or path to .mjs file"
 #USAGE arg "[args...]" var=#true help="Arguments to pass to the script"
-#USAGE flag "-s --site <site>" help="Site to use auth for (default: inferred from script)"
 #USAGE flag "-b --browser <browser>" help="Browser ID to run against (persistent browser)"
 #USAGE flag "--headed" help="Run with visible browser"
 
@@ -49,23 +48,6 @@ fi
 
 ensure_patchright_node_module
 
-# Determine site from flag or script metadata
-SITE="${usage_site:-}"
-if [ -z "$SITE" ]; then
-  if ! SITE=$(node -e "import('file://$SCRIPT_PATH').then(m => console.log(m.site || ''))" 2>/dev/null); then
-    SITE=""
-  fi
-fi
-
-# Auth is optional
-AUTH_FILE=""
-if [ -n "$SITE" ]; then
-  AUTH_FILE="$(auth_file "$SITE")"
-  if [ ! -f "$AUTH_FILE" ]; then
-    AUTH_FILE=""
-  fi
-fi
-
 CACHE="$(cache_dir)"
 if [ -z "$BROWSER_ID" ] && { [ ! -d "$CACHE" ] || ! ls "$CACHE"/chromium-* &>/dev/null; }; then
   echo "Chromium not installed. Run: browser setup" >&2
@@ -74,22 +56,13 @@ fi
 
 echo "Running: $(basename "$SCRIPT_PATH" .mjs)"
 echo "  Agent: $AGENT"
-[ -n "$SITE" ] && echo "  Site:  $SITE"
-if [ -n "$AUTH_FILE" ]; then
-  echo "  Auth:  $AUTH_FILE"
-else
-  echo "  Auth:  none"
-fi
 [ -n "$BROWSER_ID" ] && echo "  Browser: $BROWSER_ID"
 echo ""
 
 HARNESS_ARGS=(
-  --mode run
   --script "$SCRIPT_PATH"
   --headed "$HEADED"
 )
-[ -n "$SITE" ] && HARNESS_ARGS+=(--site "$SITE")
-[ -n "$AUTH_FILE" ] && HARNESS_ARGS+=(--auth-file "$AUTH_FILE")
 [ -n "$BROWSER_ID" ] && HARNESS_ARGS+=(--browser "$BROWSER_ID")
 
 node "$MISE_CONFIG_ROOT/scripts/_harness.mjs" \

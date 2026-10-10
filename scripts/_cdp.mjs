@@ -7,10 +7,9 @@
 
 import { chromium } from 'patchright';
 import { parseArgs } from 'node:util';
-import { readFileSync, existsSync, mkdirSync } from 'node:fs';
-import { chmodSync } from 'node:fs';
+import { readFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { resolvePidFileById, resolvePidFileByAgent, resolveAuthFile, newAuthFile } from './_paths.mjs';
+import { resolvePidFileById, resolvePidFileByAgent } from './_paths.mjs';
 import { SERIALIZE_FN } from './_serialize.mjs';
 
 const { values, positionals } = parseArgs({
@@ -26,7 +25,6 @@ const { values, positionals } = parseArgs({
     x:        { type: 'string', default: '0' },
     y:        { type: 'string', default: '0' },
     timeout:  { type: 'string', default: '30000' },
-    site:     { type: 'string' },
   },
   allowPositionals: true,
   strict: false,
@@ -65,7 +63,7 @@ async function connect() {
   const info = JSON.parse(readFileSync(pidFile, 'utf-8'));
   if (!agent) agent = info.agent;
 
-  const browser = await chromium.connectOverCDP(`http://localhost:${info.port}`);
+  const browser = await chromium.connectOverCDP(`http://127.0.0.1:${info.port}`);
   const contexts = browser.contexts();
   let context = contexts[0] || await browser.newContext();
   const pages = context.pages();
@@ -140,35 +138,6 @@ const actions = {
     }
     const { browser, page } = await connect();
     await page.mouse.wheel(x, y);
-    await browser.close();
-  },
-
-  async 'save-auth'() {
-    const site = values.site || positionals[0];
-    if (!site) { console.error('Usage: --action save-auth --site <site>'); process.exit(1); }
-    const { browser, context } = await connect();
-    const authPath = newAuthFile(agent, site);
-    await context.storageState({ path: authPath });
-    chmodSync(authPath, 0o600);
-    console.log(`Auth saved: ${authPath}`);
-    await browser.close();
-  },
-
-  async 'load-auth'() {
-    const site = values.site || positionals[0];
-    if (!site) { console.error('Usage: --action load-auth --site <site>'); process.exit(1); }
-    const authPath = resolveAuthFile(agent, site);
-    if (!existsSync(authPath)) {
-      console.error(`No auth found for ${agent} @ ${site}`);
-      console.error(`Run: browser login ${site}`);
-      process.exit(1);
-    }
-    const { browser, context } = await connect();
-    const state = JSON.parse(readFileSync(authPath, 'utf-8'));
-    if (state.cookies && state.cookies.length > 0) {
-      await context.addCookies(state.cookies);
-    }
-    console.log(`Auth loaded from: ${authPath}`);
     await browser.close();
   },
 

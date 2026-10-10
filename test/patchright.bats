@@ -33,7 +33,7 @@ load helpers
 }
 
 @test "runtime tasks ensure patchright module resolution before node imports" {
-  for task in launch login run; do
+  for task in launch run; do
     assert_file_contains 'source.*patchright.sh' "$REPO_DIR/.mise/tasks/$task" \
       "$task does not source patchright.sh"
     assert_file_contains 'ensure_patchright_node_module' "$REPO_DIR/.mise/tasks/$task" \

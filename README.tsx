@@ -77,7 +77,7 @@ const readme = (
     <Center>
       <Heading level={1}>browser</Heading>
       <Paragraph>
-        <Bold>Agent-scoped Chromium automation with saved authentication.</Bold>
+        <Bold>Chromium automation with named profile storage.</Bold>
       </Paragraph>
       <Badges>
         <Badge label="tasks" value={`${tasks}`} color="blue" />
@@ -132,21 +132,21 @@ browser profile list`}</CodeBlock>
         Profiles live under <Code>~/.local/share/browser/profiles/NAME/data</Code>. Set <Code>BROWSER_PROFILES_DIR</Code> to choose a different profile-storage root. Profile names start with a letter or digit and contain only letters, digits, underscores, and hyphens.
       </Paragraph>
       <Paragraph>
-        Profile storage is available now; launching by profile and forking profiles are not implemented yet. Existing launch and auth commands still use the agent-scoped workflow below.
+        Profile storage is available now; launching by profile and forking profiles are not implemented yet. Existing browser commands still require agent identity until the lifecycle migration is complete.
       </Paragraph>
     </Section>
 
-    <Section title="Authenticated workflows">
+    <Section title="Scripted workflows">
       <Paragraph>
-        Saved browser state is namespaced by agent and site. Login can use a supported automatic flow or a visible interactive browser.
+        Export a Playwright module whose default function receives <Code>{"{ page, context, browser, args }"}</Code>. Run it in a fresh temporary browser, or attach to a running instance to use that browser's current session.
       </Paragraph>
-      <CodeBlock lang="bash">{`browser login github.com
-browser launch
-browser load-auth github.com
-browser goto https://github.com/settings/profile
-browser save-auth github.com`}</CodeBlock>
+      <CodeBlock lang="bash">{`browser run /path/to/research.mjs
+browser run --browser b-a1f3 /path/to/research.mjs`}</CodeBlock>
       <Paragraph>
-        For a larger workflow, export a Playwright module and run it with <Code>browser run</Code>. See <Code>scripts/github-avatar-upload.mjs</Code> for the script contract.
+        Attached runs leave the browser running. Temporary runs close their browser afterward. Scripts are imported once, and no site metadata or saved-auth files are consulted. See <Code>scripts/github-avatar-upload.mjs</Code> for an example; it requires an already logged-in browser.
+      </Paragraph>
+      <Paragraph>
+        Saved-auth commands (<Code>login</Code>, <Code>save-auth</Code>, <Code>load-auth</Code>, and auth <Code>status</Code>) and <Code>run --site</Code> have been removed. Old snapshot files remain untouched on disk but are no longer loaded or updated. Log in manually in a headed browser; profile-based persistence is the next lifecycle change.
       </Paragraph>
     </Section>
 

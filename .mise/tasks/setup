@@ -18,4 +18,4 @@ echo ""
 patchright install chromium
 
 echo ""
-echo "Done. Run: browser login <site>"
+echo "Done. Run: browser launch"

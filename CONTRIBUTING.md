@@ -1,14 +1,13 @@
 # Contributing to browser
 
-`browser` is a browser automation toolkit. It launches, controls, and scripts Chromium instances with saved auth state.
+`browser` is a browser automation toolkit. It launches, controls, and scripts Chromium instances, and manages named profile storage.
 
 ## Structure
 
 ```
 browser/
 ├── .mise/tasks/     # Public CLI tasks, BATS workflow, and observational doctor
-├── scripts/         # Node.js scripts (harness, CDP bridge, login flows)
-│   └── login/       # Per-site automated login scripts
+├── scripts/         # Node.js scripts (harness, CDP bridge, profile storage)
 ├── lib/             # Shared self-locating shell libraries
 ├── test/            # BATS tests
 └── README.tsx       # Programmable source for generated README.md
@@ -17,8 +16,8 @@ browser/
 ## Key concepts
 
 - **Named profiles**: Empty Chromium data directories at `~/.local/share/browser/profiles/<name>/data`, or under `BROWSER_PROFILES_DIR`. `profile:create` and `profile:list` are independent of identity and browser processes; `scripts/profiles.mjs` owns validation and storage. Profile-based launching is not implemented yet.
-- **Agent identity**: Resolved from `GIT_AUTHOR_EMAIL` or `git config user.email`. Used to namespace auth state, PID files, and screenshots.
-- **Auth state**: Stored at `~/.config/browser/<agent>/<site>.json`. Falls back to `~/.config/shimmer/browser/<agent>/` for migration.
+- **Agent identity**: Resolved from `GIT_AUTHOR_EMAIL` or `git config user.email`. Still used to namespace PID files and screenshots pending the profile-lifecycle migration.
+- **Script sessions**: `run` uses a fresh temporary context or the selected running browser's existing context. It does not read or write auth snapshots. Old auth files are left untouched; saved-auth commands and `--site` have been removed.
 - **PID files**: `/tmp/browser-id-<id>.json` (canonical) and `/tmp/browser-<agent>.json` (agent-default, points to latest).
 - **Browser IDs**: Short random IDs like `b-a1f3`, returned by `launch`, used by other commands via `--browser`.
 
@@ -26,7 +25,6 @@ browser/
 
 - `patchright` (Playwright fork) for browser automation
 - `jq` for JSON manipulation in shell tasks
-- `1password-cli` for credential resolution in `login`
 - All managed via mise
 
 ## Testing

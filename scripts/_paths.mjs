@@ -1,10 +1,5 @@
-// _paths.mjs — Shared path resolution for PID files and auth state
-//
-// Handles migration from shimmer paths to browser paths:
-//   PID files:  /tmp/shimmer-browser-* → /tmp/browser-*
-//   Auth state: ~/.config/shimmer/browser/ → ~/.config/browser/
-
-import { existsSync, mkdirSync } from 'node:fs';
+// Resolve current and legacy PID files for running browsers.
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 // --- PID files ---
@@ -42,30 +37,4 @@ export function resolvePidFileByAgent(agentName) {
   const legacyPath = legacyPidFileForAgent(agentName);
   if (existsSync(legacyPath)) return legacyPath;
   return null;
-}
-
-// --- Auth state ---
-
-export function authDir(agentName) {
-  return join(process.env.HOME, '.config', 'browser', agentName);
-}
-
-export function ensureAuthDir(agentName) {
-  const dir = authDir(agentName);
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
-
-// Resolve auth file — check new path first, fall back to legacy
-export function resolveAuthFile(agentName, site) {
-  const newFile = join(authDir(agentName), `${site}.json`);
-  if (existsSync(newFile)) return newFile;
-  const oldFile = join(process.env.HOME, '.config', 'shimmer', 'browser', agentName, `${site}.json`);
-  if (existsSync(oldFile)) return oldFile;
-  return newFile; // default to new location for writes
-}
-
-// Auth file at new location (for writing)
-export function newAuthFile(agentName, site) {
-  return join(ensureAuthDir(agentName), `${site}.json`);
 }

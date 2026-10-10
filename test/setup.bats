@@ -36,11 +36,25 @@ load helpers
   done <<< "$task_files"
 }
 
-@test "legacy browser and auth tasks source identity.sh" {
-  for name in launch close close-all goto click fill content scroll screenshot wait login run save-auth load-auth status; do
+@test "legacy browser tasks source identity.sh" {
+  for name in launch close close-all goto click fill content scroll screenshot wait run; do
     assert_file_contains 'source.*identity.sh' "$REPO_DIR/.mise/tasks/$name" \
       "$name doesn't source identity.sh"
   done
+}
+
+@test "public commands no longer expose auth snapshot persistence" {
+  setup_browser_on_path
+
+  for task in login save-auth load-auth status; do
+    run browser "$task" --help
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"no task $task found"* ]]
+  done
+
+  run browser run --help
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"--site"* ]]
 }
 
 @test "run task does not use eval for args" {
