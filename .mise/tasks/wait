@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
 #MISE description="Wait for an element to appear in the browser"
-#USAGE example "browser wait '#results' --timeout 10000" header="Wait for an element"
+#USAGE example "browser wait --browser b-a1f3 '#results' --timeout 10000" header="Wait for an element"
 #USAGE arg "<selector>" help="CSS selector to wait for"
 #USAGE flag "-t --timeout <timeout>" help="Timeout in milliseconds (default: 30000)"
-#USAGE flag "-b --browser <browser>" help="Browser ID (default: agent's latest browser)"
+#USAGE flag "-b --browser <browser>" help="Required browser ID returned by launch"
 
 set -euo pipefail
-source "$MISE_CONFIG_ROOT/lib/identity.sh"
+source "$MISE_CONFIG_ROOT/lib/runtime.sh"
 
 SELECTOR="${usage_selector:?Usage: browser wait <selector>}"
 TIMEOUT="${usage_timeout:-30000}"
-BROWSER_ID="${usage_browser:-}"
+BROWSER_ID="${usage_browser:?Pass --browser ID}"
 
-ARGS=(--action wait --agent "$AGENT" --selector "$SELECTOR" --timeout "$TIMEOUT")
-[ -n "$BROWSER_ID" ] && ARGS+=(--browser "$BROWSER_ID")
+ARGS=(--action wait --browser "$BROWSER_ID" --selector "$SELECTOR" --timeout "$TIMEOUT")
 
 node "$MISE_CONFIG_ROOT/scripts/_cdp.mjs" ${ARGS[@]+"${ARGS[@]}"}

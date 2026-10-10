@@ -91,14 +91,15 @@ const readme = (
 
     <Section title="Take a quick look">
       <Paragraph>
-        Launch an agent-scoped browser, render a page, and save the current viewport as a PNG.
+        Create a named profile, launch Chromium, and save the current viewport as a PNG.
       </Paragraph>
-      <CodeBlock lang="bash">{`browser launch
-browser goto https://example.com
-browser screenshot
-browser close`}</CodeBlock>
+      <CodeBlock lang="bash">{`browser profile create rentals
+id=$(browser launch --profile rentals --headed)
+browser goto --browser "$id" https://example.com
+browser screenshot --browser "$id"
+browser close "$id"`}</CodeBlock>
       <Paragraph>
-        The screenshot command prints a path under <Code>/tmp/browser-screenshots</Code>. Pass that path to an image-aware tool to inspect the rendered page.
+        The screenshot command prints a private PNG path under the instance registry's <Code>screenshots</Code> directory. Pass that path to an image-aware tool to inspect the rendered page.
       </Paragraph>
     </Section>
 
@@ -106,19 +107,19 @@ browser close`}</CodeBlock>
       <Paragraph>
         Scroll the persistent browser by signed pixel deltas, then take another viewport screenshot. Ask for the entire scrollable page only when you need it.
       </Paragraph>
-      <CodeBlock lang="bash">{`browser scroll --y 700
-browser scroll --x 400 --y -200
-browser screenshot
-browser screenshot --full-page`}</CodeBlock>
+      <CodeBlock lang="bash">{`browser scroll --browser b-a1f3 --y 700
+browser scroll --browser b-a1f3 --x 400 --y -200
+browser screenshot --browser b-a1f3
+browser screenshot --browser b-a1f3 --full-page`}</CodeBlock>
     </Section>
 
     <Section title="Interact and inspect">
-      <CodeBlock lang="bash">{`browser content 'main' --depth 2
-browser wait '#results'
-browser click 'button[type=submit]'
-browser fill 'input[name=q]' 'browser automation'`}</CodeBlock>
+      <CodeBlock lang="bash">{`browser content --browser b-a1f3 'main' --depth 2
+browser wait --browser b-a1f3 '#results'
+browser click --browser b-a1f3 'button[type=submit]'
+browser fill --browser b-a1f3 'input[name=q]' 'browser automation'`}</CodeBlock>
       <Paragraph>
-        Commands default to the agent's latest browser. Use <Code>--browser b-a1f3</Code> when several instances are running.
+        Controls require an explicit browser ID. Use <Code>browser list</Code> to find managed instances. <Code>browser close-all --all</Code> explicitly closes every instance in this user's registry.
       </Paragraph>
     </Section>
 
@@ -126,13 +127,13 @@ browser fill 'input[name=q]' 'browser automation'`}</CodeBlock>
       <CodeBlock lang="bash">{`browser profile create rentals
 browser profile list`}</CodeBlock>
       <Paragraph>
-        A profile starts as an empty, private Chromium data directory. Creating and listing profiles requires no agent identity and does not launch a browser or copy saved logins.
+        A profile starts as an empty, private Chromium data directory. Browsing updates it automatically; persistent cookies, storage, and preferences survive clean restarts. Sites can expire logins, and session-only cookies may not survive a restart. No Git identity or account inference is used.
       </Paragraph>
       <Paragraph>
         Profiles live under <Code>~/.local/share/browser/profiles/NAME/data</Code>. Set <Code>BROWSER_PROFILES_DIR</Code> to choose a different profile-storage root. Profile names start with a letter or digit and contain only letters, digits, underscores, and hyphens.
       </Paragraph>
       <Paragraph>
-        Profile storage is available now; launching by profile and forking profiles are not implemented yet. Existing browser commands still require agent identity until the lifecycle migration is complete.
+        Launch with <Code>--profile NAME</Code> or <Code>--temporary</Code>, never an implicit default. A profile can be used by only one managed instance at a time, including concurrent launches. Temporary browser data is removed on clean close. Forking closed profiles is not implemented yet.
       </Paragraph>
     </Section>
 
@@ -143,16 +144,26 @@ browser profile list`}</CodeBlock>
       <CodeBlock lang="bash">{`browser run /path/to/research.mjs
 browser run --browser b-a1f3 /path/to/research.mjs`}</CodeBlock>
       <Paragraph>
-        Attached runs leave the browser running. Temporary runs close their browser afterward. Scripts are imported once, and no site metadata or saved-auth files are consulted. See <Code>scripts/github-avatar-upload.mjs</Code> for an example; it requires an already logged-in browser.
+        Attached runs leave the browser running. Temporary runs close their browser afterward. Scripts are imported once, and no site metadata or saved-auth files are consulted. See <Code>scripts/workflows/github-avatar-upload.mjs</Code> for an example; it requires an already logged-in browser.
       </Paragraph>
       <Paragraph>
-        Saved-auth commands (<Code>login</Code>, <Code>save-auth</Code>, <Code>load-auth</Code>, and auth <Code>status</Code>) and <Code>run --site</Code> have been removed. Old snapshot files remain untouched on disk but are no longer loaded or updated. Log in manually in a headed browser; profile-based persistence is the next lifecycle change.
+        Saved-auth commands (<Code>login</Code>, <Code>save-auth</Code>, <Code>load-auth</Code>, and auth <Code>status</Code>) and <Code>run --site</Code> have been removed. Old snapshot files remain untouched on disk but are no longer loaded or updated. Log in manually in a headed named profile; its state persists on close.
+      </Paragraph>
+    </Section>
+
+    <Section title="Lifecycle and recovery">
+      <Paragraph>
+        Instance records live under <Code>~/.local/state/browser/instances</Code>, or <Code>BROWSER_RUNTIME_DIR</Code>. A detached worker owns each Chromium context. Closing uses CDP for a graceful shutdown, not a blind PID signal. Old process records and saved logins are not adopted.
+      </Paragraph>
+      <Paragraph>
+        Each active named profile has a private <Code>running.json</Code> reservation. Clean close releases it after Chromium exits. An abruptly killed worker may leave a reservation; launches then refuse rather than risk concurrent writes. Automatic crash recovery is not implemented. Verify that no Chromium process uses that data directory before manually removing a stale reservation. Profiles and instance records are private session data, not Git artifacts.
       </Paragraph>
     </Section>
 
     <Section title="Development">
       <CodeBlock lang="bash">{`mise trust
 mise install
+mise run setup
 mise run test
 mise run doctor
 
@@ -162,7 +173,8 @@ codebase pre-commit`}</CodeBlock>
         <Item>Public commands live in <Code>.mise/tasks</Code>.</Item>
         <Item>Browser actions live in <Code>scripts/_cdp.mjs</Code>.</Item>
         <Item>The public test task uses the KKL BATS fork and Rush to run isolated tests concurrently across and within files.</Item>
-        <Item>CI checks Ubuntu, macOS, convention lints, and this generated README.</Item>
+        <Item>Real Chromium lifecycle tests cover persistent cookies, temporary isolation, and simultaneous profile launches. Install Chromium with <Code>mise run setup</Code>; CI installs it on Ubuntu and macOS.</Item>
+        <Item>CI also checks convention lints and this generated README.</Item>
       </List>
     </Section>
 

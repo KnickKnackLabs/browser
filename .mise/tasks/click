@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
 #MISE description="Click an element in the browser"
-#USAGE example "browser click 'button[type=submit]'" header="Click a matching element"
+#USAGE example "browser click --browser b-a1f3 'button[type=submit]'" header="Click a matching element"
 #USAGE arg "<selector>" help="CSS selector for the element to click"
-#USAGE flag "-b --browser <browser>" help="Browser ID (default: agent's latest browser)"
+#USAGE flag "-b --browser <browser>" help="Required browser ID returned by launch"
 
 set -euo pipefail
-source "$MISE_CONFIG_ROOT/lib/identity.sh"
+source "$MISE_CONFIG_ROOT/lib/runtime.sh"
 
 SELECTOR="${usage_selector:?Usage: browser click <selector>}"
-BROWSER_ID="${usage_browser:-}"
+BROWSER_ID="${usage_browser:?Pass --browser ID}"
 
-ARGS=(--action click --agent "$AGENT" --selector "$SELECTOR")
-[ -n "$BROWSER_ID" ] && ARGS+=(--browser "$BROWSER_ID")
+ARGS=(--action click --browser "$BROWSER_ID" --selector "$SELECTOR")
 
 node "$MISE_CONFIG_ROOT/scripts/_cdp.mjs" ${ARGS[@]+"${ARGS[@]}"}

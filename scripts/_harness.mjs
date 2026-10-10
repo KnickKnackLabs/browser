@@ -1,9 +1,8 @@
 // Run a Playwright module in a temporary browser or an existing CDP instance.
 import { chromium } from 'patchright';
 import { parseArgs } from 'node:util';
-import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { resolvePidFileById } from './_paths.mjs';
+import { readInstance } from './instances.mjs';
 
 const { values, positionals } = parseArgs({
   options: {
@@ -19,13 +18,8 @@ async function openBrowser() {
     return chromium.launch({ headless: values.headed !== 'true' });
   }
 
-  const pidFile = resolvePidFileById(values.browser);
-  if (!pidFile) {
-    throw new Error(`No browser found with ID ${values.browser}. Run: browser launch`);
-  }
-
-  const info = JSON.parse(readFileSync(pidFile, 'utf-8'));
-  return chromium.connectOverCDP(`http://127.0.0.1:${info.port}`);
+  const record = await readInstance(values.browser);
+  return chromium.connectOverCDP(record.endpoint, { timeout: 3000 });
 }
 
 async function runScript() {

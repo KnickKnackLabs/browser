@@ -32,12 +32,10 @@ load helpers
   [[ "$output" == *"exists but is not a symlink"* ]]
 }
 
-@test "runtime tasks ensure patchright module resolution before node imports" {
-  for task in launch run; do
-    assert_file_contains 'source.*patchright.sh' "$REPO_DIR/.mise/tasks/$task" \
-      "$task does not source patchright.sh"
-    assert_file_contains 'ensure_patchright_node_module' "$REPO_DIR/.mise/tasks/$task" \
-      "$task does not ensure patchright module resolution"
+@test "runtime CLI entry points share engine initialization" {
+  for task in launch run close close-all list goto content fill click screenshot scroll wait; do
+    assert_file_contains 'source.*runtime.sh' "$REPO_DIR/.mise/tasks/$task" \
+      "$task does not initialize the browser runtime"
   done
 }
 

@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
 #MISE description="Fill an input field in the browser"
-#USAGE example "browser fill 'input[name=q]' 'browser automation'" header="Fill an input"
+#USAGE example "browser fill --browser b-a1f3 'input[name=q]' 'browser automation'" header="Fill an input"
 #USAGE arg "<selector>" help="CSS selector for the input"
 #USAGE arg "<value>" help="Value to fill"
-#USAGE flag "-b --browser <browser>" help="Browser ID (default: agent's latest browser)"
+#USAGE flag "-b --browser <browser>" help="Required browser ID returned by launch"
 
 set -euo pipefail
-source "$MISE_CONFIG_ROOT/lib/identity.sh"
+source "$MISE_CONFIG_ROOT/lib/runtime.sh"
 
 SELECTOR="${usage_selector:?Usage: browser fill <selector> <value>}"
 VALUE="${usage_value:?Usage: browser fill <selector> <value>}"
-BROWSER_ID="${usage_browser:-}"
+BROWSER_ID="${usage_browser:?Pass --browser ID}"
 
-ARGS=(--action fill --agent "$AGENT" --selector "$SELECTOR" --value "$VALUE")
-[ -n "$BROWSER_ID" ] && ARGS+=(--browser "$BROWSER_ID")
+ARGS=(--action fill --browser "$BROWSER_ID" --selector "$SELECTOR" --value "$VALUE")
 
 node "$MISE_CONFIG_ROOT/scripts/_cdp.mjs" ${ARGS[@]+"${ARGS[@]}"}
