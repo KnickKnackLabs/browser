@@ -1,16 +1,17 @@
 // Own one persistent Chromium context until it closes; outlive the launching CLI.
 import { chromium } from 'patchright';
-import { mkdtemp, readFile, rm, open, unlink } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
-import { profileDataDirectory, profileDirectory } from './profile-store.mjs';
+import { profileDataDirectory } from './profile-store.mjs';
+import { reserveProfile } from './profile-reservation.mjs';
 import { writeInstance, removeInstance } from './instances.mjs';
 
 const options = JSON.parse(process.argv[2]);
 let context;
 let temporaryDirectory;
-let reservation;
+let releaseProfile;
 let published = false;
 let stopping = false;
 let closed = false;
@@ -29,23 +30,6 @@ process.on('SIGINT', requestStop);
 process.on('disconnect', () => {
   if (!published) requestStop();
 });
-
-async function reserveProfile(name) {
-  const path = join(profileDirectory(name), 'running.json');
-  let file;
-  try {
-    file = await open(path, 'wx', 0o600);
-  } catch (error) {
-    if (error.code !== 'EEXIST') throw error;
-    throw new Error(`Profile "${name}" is reserved by another browser or launch. Inspect ${path} if a previous launch crashed.`);
-  }
-  reservation = path;
-  try {
-    await file.writeFile(JSON.stringify({ id: options.id, pid: process.pid }));
-  } finally {
-    await file.close();
-  }
-}
 
 async function debuggingEndpoint(dataDirectory) {
   for (let attempt = 0; attempt < 100; attempt += 1) {
@@ -69,7 +53,9 @@ try {
   let dataDirectory;
   if (options.profile) {
     dataDirectory = await profileDataDirectory(options.profile);
-    await reserveProfile(options.profile);
+    releaseProfile = await reserveProfile(options.profile, {
+      operation: 'browser', id: options.id, pid: process.pid,
+    });
   } else {
     temporaryDirectory = await mkdtemp(join(tmpdir(), 'browser-session-'));
     dataDirectory = temporaryDirectory;
@@ -114,7 +100,7 @@ try {
 } finally {
   // Never release a profile while its Chromium context could still be writing.
   if (context && !closed) await context.close();
-  if (reservation) await unlink(reservation);
+  if (releaseProfile) await releaseProfile();
   if (temporaryDirectory) await rm(temporaryDirectory, { recursive: true, force: true });
   await removeInstance(options.id);
   if (process.connected) process.disconnect();

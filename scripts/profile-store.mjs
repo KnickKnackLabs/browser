@@ -26,7 +26,7 @@ export async function profileDataDirectory(name) {
   return data;
 }
 
-export async function createProfile(name) {
+export async function createProfileDirectory(name) {
   const directory = profileDirectory(name);
   await mkdir(profilesRoot, { recursive: true, mode: 0o700 });
   try {
@@ -35,6 +35,11 @@ export async function createProfile(name) {
     if (error.code === 'EEXIST') throw new Error(`Profile "${name}" already exists.`);
     throw error;
   }
+  return directory;
+}
+
+export async function createProfile(name) {
+  const directory = await createProfileDirectory(name);
   try {
     await mkdir(join(directory, 'data'), { mode: 0o700 });
   } catch (error) {

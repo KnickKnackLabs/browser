@@ -85,9 +85,36 @@ teardown() {
   printf '%s\n' '{"id":"b-abandoned","pid":999999999}' > "$BROWSER_PROFILES_DIR/reserved/running.json"
   run browser launch --profile reserved
   [ "$status" -ne 0 ]
-  [[ "$output" == *"reserved by another browser or launch"* ]]
+  [[ "$output" == *"reserved by another operation"* ]]
   [ -f "$BROWSER_PROFILES_DIR/reserved/running.json" ]
   [ -d "$BROWSER_PROFILES_DIR/reserved/data" ]
+}
+
+@test "closed profile forks share initial cookies but evolve independently" {
+  browser profile:create baseline
+  source_id="$(browser launch --profile baseline)"
+  browser run --browser "$source_id" "$PROBE" set
+
+  run browser profile:fork baseline research-a
+  [ "$status" -ne 0 ]
+  [ ! -e "$BROWSER_PROFILES_DIR/research-a" ]
+  browser close "$source_id"
+
+  browser profile:fork baseline research-a
+  browser profile:fork baseline research-b
+  first_id="$(browser launch --profile research-a)"
+  second_id="$(browser launch --profile research-b)"
+  browser run --browser "$first_id" "$PROBE" expect-saved
+  browser run --browser "$second_id" "$PROBE" expect-saved
+  browser run --browser "$first_id" "$PROBE" set changed
+  browser run --browser "$first_id" "$PROBE" expect-saved changed
+  browser run --browser "$second_id" "$PROBE" expect-saved
+  browser close "$first_id"
+  browser close "$second_id"
+
+  source_id="$(browser launch --profile baseline)"
+  browser run --browser "$source_id" "$PROBE" expect-saved
+  browser close "$source_id"
 }
 
 @test "launch refuses implicit or contradictory profile choices" {

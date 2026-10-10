@@ -133,7 +133,28 @@ browser profile list`}</CodeBlock>
         Profiles live under <Code>~/.local/share/browser/profiles/NAME/data</Code>. Set <Code>BROWSER_PROFILES_DIR</Code> to choose a different profile-storage root. Profile names start with a letter or digit and contain only letters, digits, underscores, and hyphens.
       </Paragraph>
       <Paragraph>
-        Launch with <Code>--profile NAME</Code> or <Code>--temporary</Code>, never an implicit default. A profile can be used by only one managed instance at a time, including concurrent launches. Temporary browser data is removed on clean close. Forking closed profiles is not implemented yet.
+        Launch with <Code>--profile NAME</Code> or <Code>--temporary</Code>, never an implicit default. A profile can be used by only one managed instance at a time, including concurrent launches. Temporary browser data is removed on clean close. Use <Code>profile fork SOURCE DESTINATION</Code> to copy a closed profile into a new independent one.
+      </Paragraph>
+    </Section>
+
+    <Section title="Fork a closed baseline">
+      <CodeBlock lang="bash">{`browser profile create zillow
+id=$(browser launch --profile zillow --headed)
+# Log in in that window, then close it cleanly.
+browser close "$id"
+
+browser profile fork zillow research-1
+browser profile fork zillow research-2
+browser launch --profile research-1 --headed
+browser launch --profile research-2 --headed`}</CodeBlock>
+      <Paragraph>
+        Each fork starts with the baseline's browser data and evolves independently. The source must be closed and the destination must not exist. Both names are reserved during copying, and incomplete data is never exposed as a launchable profile. A failed or canceled copy removes its partial destination.
+      </Paragraph>
+      <Paragraph>
+        Forks are full local copies, not immutable snapshots or portable auth bundles. They include sensitive session state and may use substantial disk space. Symlinks, special files, and remaining Chromium locks are refused. Ordinary interruption requests cleanup; a file copy already in progress may need to finish first. Abrupt process kills can leave reservations for manual recovery.
+      </Paragraph>
+      <Paragraph>
+        Local isolation is not account isolation: forks logged into the same Zillow account still share server-side changes such as saved listings. Login expiry and cross-machine portability remain site- and platform-dependent.
       </Paragraph>
     </Section>
 
@@ -156,7 +177,7 @@ browser run --browser b-a1f3 /path/to/research.mjs`}</CodeBlock>
         Instance records live under <Code>~/.local/state/browser/instances</Code>, or <Code>BROWSER_RUNTIME_DIR</Code>. A detached worker owns each Chromium context. Closing uses CDP for a graceful shutdown, not a blind PID signal. Old process records and saved logins are not adopted.
       </Paragraph>
       <Paragraph>
-        Each active named profile has a private <Code>running.json</Code> reservation. Clean close releases it after Chromium exits. An abruptly killed worker may leave a reservation; launches then refuse rather than risk concurrent writes. Automatic crash recovery is not implemented. Verify that no Chromium process uses that data directory before manually removing a stale reservation. Profiles and instance records are private session data, not Git artifacts.
+        Each active browser or fork operation has private <Code>running.json</Code> reservations on the profiles it owns. Workers release reservations after Chromium exits; forks release them after publication or cleanup. An abruptly killed worker may leave a reservation; launches then refuse rather than risk concurrent writes. Automatic crash recovery is not implemented. Verify that the reservation's owner process has stopped and no Chromium process uses that data directory before manually removing a stale reservation. Profiles and instance records are private session data, not Git artifacts.
       </Paragraph>
     </Section>
 

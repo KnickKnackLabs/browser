@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#MISE description="Fork a closed profile into a new independent profile"
+#USAGE example "browser profile fork zillow research-1" header="Copy a closed Zillow baseline"
+#USAGE arg "<source>" help="Existing closed profile"
+#USAGE arg "<destination>" help="New profile name (must not exist)"
+set -euo pipefail
+
+node "$MISE_CONFIG_ROOT/scripts/profiles.mjs" fork "$usage_source" "$usage_destination"

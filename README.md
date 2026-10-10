@@ -4,8 +4,8 @@
 
 **Chromium automation with named profile storage.**
 
-![tasks: 17](https://img.shields.io/badge/tasks-17-blue?style=flat)
-[![tests: 42](https://img.shields.io/badge/tests-42-brightgreen?style=flat)](test/)
+![tasks: 18](https://img.shields.io/badge/tasks-18-blue?style=flat)
+[![tests: 49](https://img.shields.io/badge/tests-49-brightgreen?style=flat)](test/)
 ![CI: ubuntu-latest + macos-latest](https://img.shields.io/badge/CI-ubuntu--latest%20%2B%20macos--latest-4EAA25?style=flat)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat)](LICENSE)
 
@@ -60,7 +60,27 @@ A profile starts as an empty, private Chromium data directory. Browsing updates 
 
 Profiles live under `~/.local/share/browser/profiles/NAME/data`. Set `BROWSER_PROFILES_DIR` to choose a different profile-storage root. Profile names start with a letter or digit and contain only letters, digits, underscores, and hyphens.
 
-Launch with `--profile NAME` or `--temporary`, never an implicit default. A profile can be used by only one managed instance at a time, including concurrent launches. Temporary browser data is removed on clean close. Forking closed profiles is not implemented yet.
+Launch with `--profile NAME` or `--temporary`, never an implicit default. A profile can be used by only one managed instance at a time, including concurrent launches. Temporary browser data is removed on clean close. Use `profile fork SOURCE DESTINATION` to copy a closed profile into a new independent one.
+
+## Fork a closed baseline
+
+```bash
+browser profile create zillow
+id=$(browser launch --profile zillow --headed)
+# Log in in that window, then close it cleanly.
+browser close "$id"
+
+browser profile fork zillow research-1
+browser profile fork zillow research-2
+browser launch --profile research-1 --headed
+browser launch --profile research-2 --headed
+```
+
+Each fork starts with the baseline's browser data and evolves independently. The source must be closed and the destination must not exist. Both names are reserved during copying, and incomplete data is never exposed as a launchable profile. A failed or canceled copy removes its partial destination.
+
+Forks are full local copies, not immutable snapshots or portable auth bundles. They include sensitive session state and may use substantial disk space. Symlinks, special files, and remaining Chromium locks are refused. Ordinary interruption requests cleanup; a file copy already in progress may need to finish first. Abrupt process kills can leave reservations for manual recovery.
+
+Local isolation is not account isolation: forks logged into the same Zillow account still share server-side changes such as saved listings. Login expiry and cross-machine portability remain site- and platform-dependent.
 
 ## Scripted workflows
 
@@ -79,7 +99,7 @@ Saved-auth commands (`login`, `save-auth`, `load-auth`, and auth `status`) and `
 
 Instance records live under `~/.local/state/browser/instances`, or `BROWSER_RUNTIME_DIR`. A detached worker owns each Chromium context. Closing uses CDP for a graceful shutdown, not a blind PID signal. Old process records and saved logins are not adopted.
 
-Each active named profile has a private `running.json` reservation. Clean close releases it after Chromium exits. An abruptly killed worker may leave a reservation; launches then refuse rather than risk concurrent writes. Automatic crash recovery is not implemented. Verify that no Chromium process uses that data directory before manually removing a stale reservation. Profiles and instance records are private session data, not Git artifacts.
+Each active browser or fork operation has private `running.json` reservations on the profiles it owns. Workers release reservations after Chromium exits; forks release them after publication or cleanup. An abruptly killed worker may leave a reservation; launches then refuse rather than risk concurrent writes. Automatic crash recovery is not implemented. Verify that the reservation's owner process has stopped and no Chromium process uses that data directory before manually removing a stale reservation. Profiles and instance records are private session data, not Git artifacts.
 
 ## Development
 
@@ -103,7 +123,7 @@ codebase pre-commit
 <details>
 <summary><b>Current repository health</b></summary>
 
-This checkout exposes 17 public tasks and 42 BATS tests, with this configured convention lint portfolio.
+This checkout exposes 18 public tasks and 49 BATS tests, with this configured convention lint portfolio.
 
 ```
 @all
